@@ -186,6 +186,15 @@ describe('MetadataWriterService', () => {
       expect(result).toEqual({ location: '北京，中国' });
     });
     
+    it('应从XMP-photoshop:Location字段读取地点信息', async () => {
+      const mockTags = { 'XMP-photoshop:Location': '广州，中国' };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.jpg');
+      
+      expect(result).toEqual({ location: '广州，中国' });
+    });
+    
     it('应能同时读取所有类型的元数据', async () => {
       const mockTags = { 
         Keywords: ['风景', '旅行'],
@@ -271,7 +280,10 @@ describe('MetadataWriterService', () => {
       
       expect((mockExifTool as any).write).toHaveBeenCalledWith(
         'test.jpg',
-        { Location: '杭州，中国' },
+        { 
+          Location: '杭州，中国',
+          'XMP-photoshop:Location': '杭州，中国'
+        },
         ['-overwrite_original']
       );
     });
@@ -292,7 +304,8 @@ describe('MetadataWriterService', () => {
           ImageDescription: '杭州西湖风景',
           'Caption-Abstract': '杭州西湖风景',
           Description: '杭州西湖风景',
-          Location: '杭州，中国'
+          Location: '杭州，中国',
+          'XMP-photoshop:Location': '杭州，中国'
         },
         ['-overwrite_original']
       );
@@ -354,7 +367,8 @@ describe('MetadataWriterService', () => {
           ImageDescription: '原始描述',
           'Caption-Abstract': '原始描述',
           Description: '原始描述',
-          Location: '原始地点'
+          Location: '原始地点',
+          'XMP-photoshop:Location': '原始地点'
         },
         ['-overwrite_original']
       );
@@ -451,7 +465,8 @@ describe('MetadataWriterService', () => {
           ImageDescription: '北京故宫风景',
           'Caption-Abstract': '北京故宫风景',
           Description: '北京故宫风景',
-          Location: '北京，中国'
+          Location: '北京，中国',
+          'XMP-photoshop:Location': '北京，中国'
         },
         ['-overwrite_original']
       );
@@ -523,7 +538,8 @@ describe('MetadataWriterService', () => {
           ImageDescription: '上海东方明珠风景',
           'Caption-Abstract': '上海东方明珠风景',
           Description: '上海东方明珠风景',
-          Location: '上海，中国'
+          Location: '上海，中国',
+          'XMP-photoshop:Location': '上海，中国'
         },
         ['-overwrite_original']
       );

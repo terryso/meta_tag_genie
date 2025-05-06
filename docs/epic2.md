@@ -61,7 +61,7 @@
     - AC4: 如果同时为 PNG/HEIC 提供 `tags` 和 `people`，则关键词字段包含两者的并集。
 - **完成情况:** 已于 2023/05/17 完成，开发者：Claude
 
-### Story 2.4: 研究并实现"地点"文本元数据在 `writeImageMetadata` Tool 中的处理 - 最终确定与验证
+### Story 2.4: 研究并实现"地点"文本元数据在 `writeImageMetadata` Tool 中的处理 - 最终确定与验证 ✅
 - **用户故事 / 目标:** 作为开发者，我需要**最终确定**存储文本型"地点"信息的最佳标准元数据字段，并验证 `writeImageMetadata` Tool 能够将"地点"文本成功写入所有支持的图片格式 (JPG - 已在Epic 1实现, PNG, HEIC) 的选定字段中，并能读取，目标是优化 Spotlight 的搜索效果。
 - **详细需求:**
     - （JPG 的核心实现已在 Epic 1 Story 1.4 中完成，使用了一个初步选定的字段如 `XMP:photoshop:Location`）

@@ -136,6 +136,9 @@ export class MetadataWriterService {
       // 读取地点
       if (tagsFromFile.Location) {
         result.location = tagsFromFile.Location as string;
+      } else if ((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]) {
+        // 使用类型断言解决TypeScript类型检查问题
+        result.location = String((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]);
       }
       
       return result;
@@ -190,7 +193,9 @@ export class MetadataWriterService {
       
       // 处理地点
       if (metadata.location) {
+        // 同时使用简写形式和完整形式确保兼容性
         exiftoolArgs.Location = metadata.location;
+        exiftoolArgs["XMP-photoshop:Location"] = metadata.location;
       }
       
       // 如果没有实际需要写入的元数据，则提前返回
@@ -229,7 +234,9 @@ export class MetadataWriterService {
           
           // 如果没有新的地点但存在旧的地点，保留旧的
           if (!metadata.location && existingMetadata.location) {
+            // 同时使用简写形式和完整形式确保兼容性
             exiftoolArgs.Location = existingMetadata.location;
+            exiftoolArgs["XMP-photoshop:Location"] = existingMetadata.location;
           }
           
         } catch (error) {

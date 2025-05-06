@@ -114,7 +114,8 @@ describe('HEIC图片元数据写入测试', () => {
           ImageDescription: 'HEIC格式测试',
           'Caption-Abstract': 'HEIC格式测试',
           Description: 'HEIC格式测试',
-          Location: '上海，中国'
+          Location: '上海，中国',
+          'XMP-photoshop:Location': '上海，中国'
         },
         ['-overwrite_original']
       );
@@ -269,7 +270,8 @@ describe('HEIC图片元数据写入测试', () => {
         Keywords: ['标签A', '标签B'],
         Subject: ['标签A', '标签B'],
         Description: '测试描述',
-        Location: '测试地点'
+        Location: '测试地点',
+        'XMP-photoshop:Location': '测试地点'
       }),
       end: jest.fn().mockResolvedValue(undefined)
     } as any;
@@ -287,7 +289,8 @@ describe('HEIC图片元数据写入测试', () => {
           ImageDescription: '测试描述',
           'Caption-Abstract': '测试描述',
           Description: '测试描述',
-          Location: '测试地点'
+          Location: '测试地点',
+          'XMP-photoshop:Location': '测试地点'
         },
         ['-overwrite_original']
       );
@@ -324,7 +327,8 @@ describe('HEIC图片元数据写入测试', () => {
       read: jest.fn().mockResolvedValue({
         Keywords: ['旧标签1', '旧标签2'],
         Description: '旧描述',
-        Location: '旧地点'
+        Location: '旧地点',
+        'XMP-photoshop:Location': '旧地点'
       }),
       end: jest.fn().mockResolvedValue(undefined)
     } as any;
@@ -342,7 +346,8 @@ describe('HEIC图片元数据写入测试', () => {
           ImageDescription: '旧描述',
           'Caption-Abstract': '旧描述',
           Description: '旧描述',
-          Location: '旧地点'
+          Location: '旧地点',
+          'XMP-photoshop:Location': '旧地点'
         },
         ['-overwrite_original']
       );
