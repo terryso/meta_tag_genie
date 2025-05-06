@@ -4,7 +4,7 @@
 
 ## Story 列表
 
-### Story 3.1: Spotlight 索引和搜索验证 (标签、描述)
+### Story 3.1: Spotlight 索引和搜索验证 (标签、描述) ✅
 - **用户故事 / 目标:** 作为测试者/用户，我需要在图片被 MCP Tool (`writeImageMetadata`) 处理后，能够通过 Spotlight 使用新添加的标签和描述中的关键词成功搜索到这些图片。
 - **详细需求:**
     - 准备一组测试图片 (JPG, PNG, HEIC)。
