@@ -146,13 +146,79 @@ describe('MetadataWriterService', () => {
       expect(result).toEqual({ tags: ['tag1', 'tag2'] });
     });
     
-    it('如果既没有Keywords也没有Subject，则返回undefined标签', async () => {
+    it('如果既没有Keywords也没有Subject，则返回空对象', async () => {
       const mockTags = { OtherField: 'value' };
       (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
       
       const result = await service.readMetadataForImage('test.jpg');
       
-      expect(result).toEqual({ tags: undefined });
+      expect(result).toEqual({});
+    });
+
+    it('应正确读取描述信息', async () => {
+      const mockTags = { Description: '这是一张照片的描述' };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.jpg');
+      
+      expect(result).toEqual({ description: '这是一张照片的描述' });
+    });
+    
+    it('应从不同的描述字段中按优先级读取', async () => {
+      const mockTags = { 
+        'Caption-Abstract': '标题描述', 
+        ImageDescription: '图片描述' 
+      };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.jpg');
+      
+      // 按代码中定义的优先级，应该读取 Caption-Abstract
+      expect(result).toEqual({ description: '标题描述' });
+    });
+    
+    it('应正确读取地点信息', async () => {
+      const mockTags = { Location: '北京，中国' };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.jpg');
+      
+      expect(result).toEqual({ location: '北京，中国' });
+    });
+    
+    it('应能同时读取所有类型的元数据', async () => {
+      const mockTags = { 
+        Keywords: ['风景', '旅行'],
+        Description: '2023年夏天的旅行照片',
+        Location: '上海，中国'
+      };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.jpg');
+      
+      expect(result).toEqual({
+        tags: ['风景', '旅行'],
+        description: '2023年夏天的旅行照片',
+        location: '上海，中国'
+      });
+    });
+
+    it('应能从PNG格式图片读取所有类型的元数据', async () => {
+      const mockTags = { 
+        Keywords: ['自然', 'PNG测试'],
+        Description: 'PNG格式的测试图片',
+        Location: '上海，中国'
+      };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.png');
+      
+      expect(result).toEqual({
+        tags: ['自然', 'PNG测试'],
+        description: 'PNG格式的测试图片',
+        location: '上海，中国'
+      });
+      expect((mockExifTool as any).read).toHaveBeenCalledWith('test.png');
     });
   });
   
@@ -163,6 +229,71 @@ describe('MetadataWriterService', () => {
       expect((mockExifTool as any).write).toHaveBeenCalledWith(
         'test.jpg',
         { Keywords: ['tag1', 'tag2'], Subject: ['tag1', 'tag2'] },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入描述元数据', async () => {
+      await service.writeMetadataForImage('test.jpg', { 
+        description: '这是一张测试照片'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.jpg',
+        { 
+          ImageDescription: '这是一张测试照片',
+          'Caption-Abstract': '这是一张测试照片',
+          Description: '这是一张测试照片'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入人物元数据', async () => {
+      await service.writeMetadataForImage('test.jpg', { 
+        people: ['张三', '李四']
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.jpg',
+        { 
+          Keywords: ['张三', '李四'],
+          Subject: ['张三', '李四']
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入地点元数据', async () => {
+      await service.writeMetadataForImage('test.jpg', { 
+        location: '杭州，中国'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.jpg',
+        { Location: '杭州，中国' },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入所有类型的元数据', async () => {
+      await service.writeMetadataForImage('test.jpg', { 
+        tags: ['风景', '建筑'],
+        description: '杭州西湖风景',
+        people: ['张三', '李四'],
+        location: '杭州，中国'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.jpg',
+        { 
+          Keywords: ['风景', '建筑', '张三', '李四'],
+          Subject: ['风景', '建筑', '张三', '李四'],
+          ImageDescription: '杭州西湖风景',
+          'Caption-Abstract': '杭州西湖风景',
+          Description: '杭州西湖风景',
+          Location: '杭州，中国'
+        },
         ['-overwrite_original']
       );
     });
@@ -204,6 +335,31 @@ describe('MetadataWriterService', () => {
       );
     });
 
+    it('当overwrite为false时，应保留现有描述和地点', async () => {
+      // 模拟读取现有元数据
+      mockExifTool.read.mockResolvedValueOnce({
+        Description: '原始描述',
+        Location: '原始地点'
+      });
+      
+      // 只提供标签，不提供描述和地点
+      await service.writeMetadataForImage('test.jpg', { tags: ['new-tag'] }, false);
+      
+      // 验证写入内容包含了保留的描述和地点
+      expect(mockExifTool.write).toHaveBeenCalledWith(
+        'test.jpg',
+        { 
+          Keywords: ['new-tag'], 
+          Subject: ['new-tag'],
+          ImageDescription: '原始描述',
+          'Caption-Abstract': '原始描述',
+          Description: '原始描述',
+          Location: '原始地点'
+        },
+        ['-overwrite_original']
+      );
+    });
+
     it('当ExifTool.write超时时抛出ExifToolTimeoutError', async () => {
       const timeoutError = new Error('Operation timed out after 5000ms');
       mockExifTool.write.mockRejectedValueOnce(timeoutError);
@@ -235,6 +391,63 @@ describe('MetadataWriterService', () => {
         expect((error as ExifToolProcessError).exitCode).toBe(2);
         expect((error as ExifToolProcessError).stderr).toBe('Read-only file system');
       }
+    });
+
+    // PNG文件相关测试用例
+    it('调用ExifTool.write写入PNG格式图片的标签元数据', async () => {
+      await service.writeMetadataForImage('test.png', { tags: ['tag1', 'tag2'] });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.png',
+        { Keywords: ['tag1', 'tag2'], Subject: ['tag1', 'tag2'] },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入PNG格式图片的描述元数据', async () => {
+      await service.writeMetadataForImage('test.png', { 
+        description: '这是一张PNG测试图片'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.png',
+        { 
+          ImageDescription: '这是一张PNG测试图片',
+          'Caption-Abstract': '这是一张PNG测试图片',
+          Description: '这是一张PNG测试图片'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入PNG格式图片的所有MVP元数据类型', async () => {
+      await service.writeMetadataForImage('test.png', { 
+        tags: ['风景', '建筑'],
+        description: '北京故宫风景',
+        people: ['张三', '李四'],
+        location: '北京，中国'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.png',
+        { 
+          Keywords: ['风景', '建筑', '张三', '李四'],
+          Subject: ['风景', '建筑', '张三', '李四'],
+          ImageDescription: '北京故宫风景',
+          'Caption-Abstract': '北京故宫风景',
+          Description: '北京故宫风景',
+          Location: '北京，中国'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('PNG格式图片写入失败时应抛出MetadataWriteError', async () => {
+      const mockError = new Error('ExifTool write error for PNG');
+      mockExifTool.write.mockRejectedValueOnce(mockError);
+      
+      await expect(service.writeMetadataForImage('test.png', { tags: ['tag'] }))
+        .rejects.toThrow(MetadataWriteError);
     });
   });
   

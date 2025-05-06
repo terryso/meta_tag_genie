@@ -2,6 +2,14 @@ import { ExifTool, type Tags } from 'exiftool-vendored';
 import { FileNotFoundError, MetadataReadError, MetadataWriteError, ExifToolTimeoutError, ExifToolProcessError } from '../common/errors';
 import * as fs from 'node:fs';
 
+// 定义图片元数据参数接口
+export interface ImageMetadataArgs {
+  tags?: string[];
+  description?: string;
+  people?: string[];
+  location?: string;
+}
+
 export class MetadataWriterService {
   private exiftool: ExifTool;
   // 默认ExifTool任务超时时间，单位毫秒
@@ -84,32 +92,55 @@ export class MetadataWriterService {
   }
 
   /**
-   * 读取图片的标签元数据
+   * 读取图片的所有元数据（标签、描述、人物、地点）
    * @param filePath 图片文件路径
-   * @returns Promise<{ tags?: string[] }> 包含图片标签的对象
+   * @returns Promise<Partial<ImageMetadataArgs>> 包含图片所有元数据的对象
    */
-  async readMetadataForImage(filePath: string): Promise<{ tags?: string[] }> {
+  async readMetadataForImage(filePath: string): Promise<Partial<ImageMetadataArgs>> {
     try {
+      // 获取文件扩展名（小写）用于日志记录
+      const fileExt = filePath.toLowerCase().split('.').pop() || '';
+      console.log(`处理${fileExt.toUpperCase()}图片格式的元数据读取: ${filePath}`);
+      
       const tagsFromFile = await this.readRawMetadata(filePath);
+      const result: Partial<ImageMetadataArgs> = {};
       
-      let extractedTags: string[] | undefined = undefined;
-      
-      // 优先从IPTC Keywords中读取标签
-      if (tagsFromFile.Keywords) {
-        extractedTags = Array.isArray(tagsFromFile.Keywords) 
+      // 读取标签和人物 (Keywords/Subject)
+      let allKeywords: string[] = [];
+      if (tagsFromFile.Keywords) { // IPTC
+        allKeywords = allKeywords.concat(Array.isArray(tagsFromFile.Keywords) 
           ? tagsFromFile.Keywords 
-          : [tagsFromFile.Keywords as string];
-      } 
-      // 其次从XMP Subject中读取标签
-      else if (tagsFromFile.Subject) {
-        extractedTags = Array.isArray(tagsFromFile.Subject) 
+          : [tagsFromFile.Keywords as string]);
+      }
+      if (tagsFromFile.Subject) { // XMP
+        const subjectKeywords = Array.isArray(tagsFromFile.Subject) 
           ? tagsFromFile.Subject 
           : [tagsFromFile.Subject as string];
+        allKeywords = allKeywords.concat(subjectKeywords);
       }
       
-      return { tags: extractedTags };
+      // 去重并赋值 (为简化，此处不区分标签和人物)
+      if (allKeywords.length > 0) {
+        result.tags = [...new Set(allKeywords)];
+      }
+      
+      // 读取描述 (按优先级顺序尝试不同字段)
+      if (tagsFromFile.Description) {
+        result.description = tagsFromFile.Description as string;
+      } else if (tagsFromFile['Caption-Abstract']) {
+        result.description = tagsFromFile['Caption-Abstract'] as string;
+      } else if (tagsFromFile.ImageDescription) {
+        result.description = tagsFromFile.ImageDescription as string;
+      }
+      
+      // 读取地点
+      if (tagsFromFile.Location) {
+        result.location = tagsFromFile.Location as string;
+      }
+      
+      return result;
     } catch (error) {
-      console.error(`Error reading tags metadata from ${filePath}:`, error);
+      console.error(`Error reading metadata from ${filePath}:`, error);
       // 向上抛出错误，保持错误类型
       throw error;
     }
@@ -118,12 +149,12 @@ export class MetadataWriterService {
   /**
    * 将元数据写入图片文件
    * @param filePath 图片文件路径
-   * @param metadata 要写入的元数据对象，目前支持 {tags?: string[]}
-   * @param overwrite 是否覆盖现有元数据，默认为 true
+   * @param metadata 要写入的元数据对象，支持所有MVP元数据类型
+   * @param overwrite 是否覆盖现有元数据，默认为true
    */
   async writeMetadataForImage(
     filePath: string, 
-    metadata: { tags?: string[] }, 
+    metadata: ImageMetadataArgs, 
     overwrite = true
   ): Promise<void> {
     try {
@@ -132,40 +163,75 @@ export class MetadataWriterService {
         throw new FileNotFoundError(filePath);
       }
 
-      // 构建传递给 exiftool 的参数对象
+      // 获取文件扩展名（小写）用于日志记录
+      const fileExt = filePath.toLowerCase().split('.').pop() || '';
+      console.log(`处理${fileExt.toUpperCase()}图片格式的元数据写入: ${filePath}`);
+
+      // 构建传递给exiftool的参数对象
       const exiftoolArgs: Record<string, unknown> = {};
       
-      // 处理标签 (同时写入IPTC Keywords和XMP Subject)
-      if (metadata.tags && metadata.tags.length > 0) {
-        exiftoolArgs.Keywords = metadata.tags; // IPTC:Keywords
-        exiftoolArgs.Subject = metadata.tags;  // XMP-dc:Subject
+      // 处理标签和人物 (合并为关键词数组)
+      const allKeywords = [
+        ...(metadata.tags || []), 
+        ...(metadata.people || [])
+      ];
+      
+      if (allKeywords.length > 0) {
+        exiftoolArgs.Keywords = allKeywords; // IPTC:Keywords
+        exiftoolArgs.Subject = allKeywords;  // XMP-dc:Subject
       }
       
-      // 如果需要其他类型的元数据，可以在这里添加
-
+      // 处理描述 (写入多个常用字段以确保兼容性)
+      if (metadata.description) {
+        exiftoolArgs.ImageDescription = metadata.description;  // EXIF
+        exiftoolArgs['Caption-Abstract'] = metadata.description; // IPTC
+        exiftoolArgs.Description = metadata.description;   // XMP
+      }
+      
+      // 处理地点
+      if (metadata.location) {
+        exiftoolArgs.Location = metadata.location;
+      }
+      
       // 如果没有实际需要写入的元数据，则提前返回
       if (Object.keys(exiftoolArgs).length === 0) {
         console.log(`No metadata to write for ${filePath}`);
         return;
       }
 
-      // 确定 exiftool 选项
+      // 确定exiftool选项
       const exiftoolOptions = ['-overwrite_original'];
       
-      // 如果不覆盖现有元数据，则需要添加更精细的控制
-      // 注意：exiftool本身没有"仅添加缺失字段"的选项，所以这里可能需要更复杂的逻辑
-      // 目前简单处理，如果不覆盖，我们先读取现有元数据，然后合并
+      // 如果不覆盖现有元数据，则需要合并
       if (!overwrite) {
         try {
           const existingMetadata = await this.readMetadataForImage(filePath);
           
-          // 合并标签 (如果已有标签)
-          if (existingMetadata.tags && metadata.tags) {
-            // 创建合并后的不重复标签集合
-            const mergedTags = [...new Set([...existingMetadata.tags, ...metadata.tags])];
-            exiftoolArgs.Keywords = mergedTags;
-            exiftoolArgs.Subject = mergedTags;
+          // 合并标签和人物
+          const existingKeywords = [
+            ...(existingMetadata.tags || []),
+            ...(existingMetadata.people || [])
+          ];
+          
+          if (existingKeywords.length > 0 && allKeywords.length > 0) {
+            // 创建合并后的不重复关键词集合
+            const mergedKeywords = [...new Set([...existingKeywords, ...allKeywords])];
+            exiftoolArgs.Keywords = mergedKeywords;
+            exiftoolArgs.Subject = mergedKeywords;
           }
+          
+          // 如果没有新的描述但存在旧的描述，保留旧的
+          if (!metadata.description && existingMetadata.description) {
+            exiftoolArgs.ImageDescription = existingMetadata.description;
+            exiftoolArgs['Caption-Abstract'] = existingMetadata.description;
+            exiftoolArgs.Description = existingMetadata.description;
+          }
+          
+          // 如果没有新的地点但存在旧的地点，保留旧的
+          if (!metadata.location && existingMetadata.location) {
+            exiftoolArgs.Location = existingMetadata.location;
+          }
+          
         } catch (error) {
           // 如果读取失败但不是因为文件不存在，记录错误但继续尝试写入
           if (!(error instanceof FileNotFoundError)) {
@@ -232,7 +298,7 @@ export class MetadataWriterService {
   }
 
   /**
-   * 安全地终止 ExifTool 进程
+   * 安全地终止ExifTool进程
    * 应在应用关闭前调用以释放资源
    */
   async end(): Promise<void> {

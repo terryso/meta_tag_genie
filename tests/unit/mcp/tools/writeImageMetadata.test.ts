@@ -51,11 +51,131 @@ describe('writeImageMetadataHandler', () => {
     expect(result).toEqual({
       success: true,
       filePath: 'test.jpg',
-      message: '标签元数据已成功写入到JPG图片。',
+      message: 'Metadata successfully written to JPG image.',
     });
   });
 
-  it('处理空标签列表', async () => {
+  it('处理描述元数据写入', async () => {
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const params = {
+      filePath: 'test.jpg',
+      metadata: {
+        description: '这是一张测试照片的描述'
+      },
+      overwrite: true,
+    };
+
+    const result = await writeImageMetadataHandler(params, mockContext);
+
+    // 验证调用
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      'test.jpg',
+      { description: '这是一张测试照片的描述' },
+      true
+    );
+    
+    // 验证返回值
+    expect(result).toEqual({
+      success: true,
+      filePath: 'test.jpg',
+      message: 'Metadata successfully written to JPG image.',
+    });
+  });
+
+  it('处理人物元数据写入', async () => {
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const params = {
+      filePath: 'test.jpg',
+      metadata: {
+        people: ['张三', '李四']
+      },
+      overwrite: true,
+    };
+
+    const result = await writeImageMetadataHandler(params, mockContext);
+
+    // 验证调用
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      'test.jpg',
+      { people: ['张三', '李四'] },
+      true
+    );
+    
+    // 验证返回值
+    expect(result).toEqual({
+      success: true,
+      filePath: 'test.jpg',
+      message: 'Metadata successfully written to JPG image.',
+    });
+  });
+
+  it('处理地点元数据写入', async () => {
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const params = {
+      filePath: 'test.jpg',
+      metadata: {
+        location: '北京，中国'
+      },
+      overwrite: true,
+    };
+
+    const result = await writeImageMetadataHandler(params, mockContext);
+
+    // 验证调用
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      'test.jpg',
+      { location: '北京，中国' },
+      true
+    );
+    
+    // 验证返回值
+    expect(result).toEqual({
+      success: true,
+      filePath: 'test.jpg',
+      message: 'Metadata successfully written to JPG image.',
+    });
+  });
+
+  it('处理所有类型的元数据写入', async () => {
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const params = {
+      filePath: 'test.jpg',
+      metadata: {
+        tags: ['风景', '建筑'],
+        description: '杭州西湖风景',
+        people: ['张三', '李四'],
+        location: '杭州，中国'
+      },
+      overwrite: true,
+    };
+
+    const result = await writeImageMetadataHandler(params, mockContext);
+
+    // 验证调用
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      'test.jpg',
+      {
+        tags: ['风景', '建筑'],
+        description: '杭州西湖风景',
+        people: ['张三', '李四'],
+        location: '杭州，中国'
+      },
+      true
+    );
+    
+    // 验证返回值
+    expect(result).toEqual({
+      success: true,
+      filePath: 'test.jpg',
+      message: 'Metadata successfully written to JPG image.',
+    });
+  });
+
+  it('处理空元数据对象', async () => {
     mockWriteMetadataForImage.mockResolvedValue(undefined);
 
     const params = {
@@ -66,7 +186,7 @@ describe('writeImageMetadataHandler', () => {
 
     await writeImageMetadataHandler(params, mockContext);
 
-    // 验证调用，标签为undefined
+    // 验证调用，元数据为空对象
     expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
       'test.jpg',
       {},
@@ -159,6 +279,42 @@ describe('writeImageMetadataHandler', () => {
       message: expect.stringContaining('内部错误'),
       errorCode: ERROR_CODES.INTERNAL_ERROR,
       errorData: { filePath: 'test.jpg' },
+    });
+  });
+
+  it('处理PNG图片文件的元数据写入并返回正确的成功消息', async () => {
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const params = {
+      filePath: 'test.png',
+      metadata: {
+        tags: ['landscape', 'city'],
+        description: 'PNG format test image',
+        people: ['John', 'Smith'],
+        location: 'Shanghai, China'
+      },
+      overwrite: true,
+    };
+
+    const result = await writeImageMetadataHandler(params, mockContext);
+
+    // 验证调用
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      'test.png',
+      {
+        tags: ['landscape', 'city'],
+        description: 'PNG format test image',
+        people: ['John', 'Smith'],
+        location: 'Shanghai, China'
+      },
+      true
+    );
+    
+    // 验证返回的成功消息适用于PNG格式
+    expect(result).toEqual({
+      success: true,
+      filePath: 'test.png',
+      message: 'Metadata successfully written to PNG image.',
     });
   });
 }); 

@@ -5,17 +5,12 @@
  */
 
 import { ERROR_CODES } from '../../common/errors';
-import type { MetadataWriterService } from '../../core/metadata-writer';
+import type { ImageMetadataArgs, MetadataWriterService } from '../../core/metadata-writer';
 
 // 输入参数类型定义
 export interface WriteImageMetadataParams {
   filePath: string;
-  metadata: {
-    tags?: string[];
-    description?: string;
-    people?: string[];
-    location?: string;
-  };
+  metadata: ImageMetadataArgs;
   overwrite: boolean;
 }
 
@@ -49,24 +44,32 @@ export async function writeImageMetadataHandler(
     // 从上下文中获取MetadataWriterService实例
     const { metadataWriter } = context.app;
     
-    // 提取当前Story 1.4重点关注的标签元数据
-    const metadataToPass: { tags?: string[] } = {};
-    if (params.metadata.tags) {
-      metadataToPass.tags = params.metadata.tags;
-    }
-    
-    // 调用核心服务写入元数据
+    // 调用核心服务写入所有元数据（包括标签、描述、人物、地点）
     await metadataWriter.writeMetadataForImage(
       params.filePath,
-      metadataToPass,
+      params.metadata,
       params.overwrite
     );
+    
+    // 获取文件扩展名（小写）
+    const fileExt = params.filePath.toLowerCase().split('.').pop() || '';
+    // 根据文件扩展名构建适当的成功消息
+    let successMessage = 'Metadata successfully written to image.';
+    
+    // 针对特定文件类型自定义消息
+    if (fileExt === 'jpg' || fileExt === 'jpeg') {
+      successMessage = 'Metadata successfully written to JPG image.';
+    } else if (fileExt === 'png') {
+      successMessage = 'Metadata successfully written to PNG image.';
+    } else if (fileExt === 'heic') {
+      successMessage = 'Metadata successfully written to HEIC image.';
+    }
     
     // 返回成功响应
     return {
       success: true,
       filePath: params.filePath,
-      message: '标签元数据已成功写入到JPG图片。',
+      message: successMessage,
     };
   } catch (error) {
     console.error('Error in writeImageMetadata tool handler:', error);

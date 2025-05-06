@@ -64,7 +64,7 @@ describe('MCP Service Integration Tests', () => {
   });
 
   // 模拟writeImageMetadata Tool调用的集成测试
-  it('模拟writeImageMetadata工具调用和标签写入验证', async () => {
+  it('模拟writeImageMetadata工具调用和元数据写入验证', async () => {
     // 创建临时测试文件
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'metatag-genie-test-'));
     const sourceFile = path.join(__dirname, '..', 'fixtures', 'test-image.jpg');
@@ -84,7 +84,7 @@ describe('MCP Service Integration Tests', () => {
       // 模拟请求ID
       const requestId = `write-test-${Date.now()}`;
       
-      // 模拟客户端请求
+      // 模拟客户端请求 - 包含所有MVP元数据类型
       const writeMetadataRequest = {
         jsonrpc: '2.0',
         id: requestId,
@@ -94,7 +94,10 @@ describe('MCP Service Integration Tests', () => {
           params: {
             filePath: targetFile,
             metadata: {
-              tags: ['测试标签1', '测试标签2', 'integration-test'],
+              tags: ['风景', '旅行', 'integration-test'],
+              description: '这是一张集成测试的照片描述',
+              people: ['张三', '李四'],
+              location: '北京，中国',
             },
             overwrite: true,
           },
@@ -108,11 +111,11 @@ describe('MCP Service Integration Tests', () => {
         result: {
           success: true,
           filePath: targetFile,
-          message: '标签元数据已成功写入到JPG图片。',
+          message: 'Metadata successfully written to JPG image.',
         },
       };
       
-      console.log('模拟执行写入标签请求:', writeMetadataRequest);
+      console.log('模拟执行写入所有元数据类型请求:', writeMetadataRequest);
       
       // 验证响应格式
       expect(simulatedWriteResponse.jsonrpc).toBe('2.0');
@@ -120,21 +123,31 @@ describe('MCP Service Integration Tests', () => {
       expect(simulatedWriteResponse.result.success).toBe(true);
       expect(simulatedWriteResponse.result.filePath).toBe(targetFile);
       
-      // 模拟直接使用ExifTool验证写入的标签
+      // 模拟直接使用ExifTool验证写入的元数据
       // 注意：这不是真正的集成测试，我们只是模拟了执行工具和验证结果的过程
       // 在真实的集成测试中，我们会通过Stdio实际调用服务并验证结果
-      console.log('模拟验证写入的标签');
+      console.log('模拟验证写入的所有元数据类型');
       
-      // 以下代码展示了如何在真实场景中验证标签写入
+      // 以下代码展示了如何在真实场景中验证元数据写入
       /* 
       const exiftool = new ExifTool();
       try {
         const metadata = await exiftool.read(targetFile);
+        
+        // 验证标签和人物（作为关键词存储）
         expect(metadata.Keywords).toBeDefined();
         expect(Array.isArray(metadata.Keywords)).toBe(true);
-        expect(metadata.Keywords).toContain('测试标签1');
-        expect(metadata.Keywords).toContain('测试标签2');
+        expect(metadata.Keywords).toContain('风景');
+        expect(metadata.Keywords).toContain('旅行');
         expect(metadata.Keywords).toContain('integration-test');
+        expect(metadata.Keywords).toContain('张三');
+        expect(metadata.Keywords).toContain('李四');
+        
+        // 验证描述
+        expect(metadata.Description || metadata.ImageDescription || metadata['Caption-Abstract']).toBe('这是一张集成测试的照片描述');
+        
+        // 验证地点
+        expect(metadata.Location).toBe('北京，中国');
       } finally {
         await exiftool.end();
       }
