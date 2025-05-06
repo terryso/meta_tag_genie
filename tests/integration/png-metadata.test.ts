@@ -13,7 +13,7 @@ import { MetadataWriterService } from '../../src/core/metadata-writer';
 const TEST_TIMEOUT = 10000;
 
 // 确保测试目录存在
-const ensureTestFixturesDir = () => {
+const _ensureTestFixturesDir = () => {
   const fixturesDir = path.join(__dirname, '..', 'fixtures');
   const imagesDir = path.join(fixturesDir, 'images');
   
@@ -121,10 +121,13 @@ describe('PNG图片元数据写入测试', () => {
   // 模拟非覆盖模式的合并测试
   it('在非覆盖模式下应能正确处理PNG中的元数据合并', async () => {
     // 模拟的已有元数据和新元数据
-    const existingMetadata = {
-      tags: ['旧标签1', '旧标签2'],
-      description: '旧描述',
-      location: '旧地点'
+    const _existingMetadata = {
+      Keywords: ['风景', '建筑', 'test', '张三', '李四'],
+      Subject: ['风景', '建筑', 'test', '张三', '李四'],
+      ImageDescription: 'PNG格式测试',
+      'Caption-Abstract': 'PNG格式测试',
+      Description: 'PNG格式测试',
+      Location: '北京，中国'
     };
     
     const newMetadata = {
