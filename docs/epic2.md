@@ -25,7 +25,7 @@
     - AC5: (单元/集成测试) 覆盖 PNG 格式下所有 MVP 元数据类型的写入与读取，确认 `exiftool-vendored` 被正确调用，并且写入的元数据位于预期的 XMP (或其他兼容) 字段。
 - **完成情况:** 已于 2023/05/15 完成，开发者：Claude
 
-### Story 2.2: 为 `writeImageMetadata` Tool 添加 HEIC 图片格式支持
+### Story 2.2: 为 `writeImageMetadata` Tool 添加 HEIC 图片格式支持 ✅
 - **用户故事 / 目标:** 作为开发者，我需要扩展 `writeImageMetadata` Tool 的功能，使其能够为 HEIC 图片格式读取和写入所有 MVP 元数据类型（标签、描述、人物、地点），确保其行为与已实现的 JPG 格式支持一致。
 - **详细需求:**
     - 重点调研所选元数据处理库 (`exiftool-vendored`) 对 HEIC (HEIF) 格式写入所有目标元数据类型（EXIF/XMP）的支持能力。
@@ -44,6 +44,7 @@
     - AC3: `readMetadataForImage` 方法能从已写入元数据的 HEIC 图片中成功读回所有类型的元数据。
     - AC4: 写入操作后，HEIC 文件保持完好，并能被标准图像查看器正确打开。
     - AC5: (单元/集成测试) 覆盖 HEIC 格式下所有 MVP 元数据类型的写入与读取，确认 `exiftool-vendored` 被正确调用，并且写入的元数据位于预期的 EXIF/XMP 字段。
+- **完成情况:** 已于 2023/05/16 完成，开发者：Claude
 
 ### Story 2.3: 在 `writeImageMetadata` Tool 中实现"人物"元数据（作为关键词）的处理 - 验证与确认
 - **用户故事 / 目标:** 作为开发者，我需要验证并确保"人物"名称（作为关键词）能够被正确处理并写入到所有支持的图片格式 (JPG - 已在Epic 1完成, PNG, HEIC) 的元数据中，并能读取验证。

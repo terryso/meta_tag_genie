@@ -449,6 +449,81 @@ describe('MetadataWriterService', () => {
       await expect(service.writeMetadataForImage('test.png', { tags: ['tag'] }))
         .rejects.toThrow(MetadataWriteError);
     });
+
+    // HEIC文件相关测试用例
+    it('调用ExifTool.write写入HEIC格式图片的标签元数据', async () => {
+      await service.writeMetadataForImage('test.heic', { tags: ['tag1', 'tag2'] });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.heic',
+        { Keywords: ['tag1', 'tag2'], Subject: ['tag1', 'tag2'] },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入HEIC格式图片的描述元数据', async () => {
+      await service.writeMetadataForImage('test.heic', { 
+        description: '这是一张HEIC测试图片'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.heic',
+        { 
+          ImageDescription: '这是一张HEIC测试图片',
+          'Caption-Abstract': '这是一张HEIC测试图片',
+          Description: '这是一张HEIC测试图片'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入HEIC格式图片的所有MVP元数据类型', async () => {
+      await service.writeMetadataForImage('test.heic', { 
+        tags: ['风景', '建筑'],
+        description: '上海东方明珠风景',
+        people: ['张三', '李四'],
+        location: '上海，中国'
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.heic',
+        { 
+          Keywords: ['风景', '建筑', '张三', '李四'],
+          Subject: ['风景', '建筑', '张三', '李四'],
+          ImageDescription: '上海东方明珠风景',
+          'Caption-Abstract': '上海东方明珠风景',
+          Description: '上海东方明珠风景',
+          Location: '上海，中国'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('HEIC格式图片写入失败时应抛出MetadataWriteError', async () => {
+      const mockError = new Error('ExifTool write error for HEIC');
+      mockExifTool.write.mockRejectedValueOnce(mockError);
+      
+      await expect(service.writeMetadataForImage('test.heic', { tags: ['tag'] }))
+        .rejects.toThrow(MetadataWriteError);
+    });
+    
+    it('应能从HEIC格式图片读取所有类型的元数据', async () => {
+      const mockTags = { 
+        Keywords: ['自然', 'HEIC测试'],
+        Description: 'HEIC格式的测试图片',
+        Location: '上海，中国'
+      };
+      (mockExifTool as any).read.mockResolvedValueOnce(mockTags);
+      
+      const result = await service.readMetadataForImage('test.heic');
+      
+      expect(result).toEqual({
+        tags: ['自然', 'HEIC测试'],
+        description: 'HEIC格式的测试图片',
+        location: '上海，中国'
+      });
+      expect((mockExifTool as any).read).toHaveBeenCalledWith('test.heic');
+    });
   });
   
   describe('end', () => {

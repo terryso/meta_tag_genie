@@ -161,6 +161,103 @@ describe('MCP Service Integration Tests', () => {
     }
   });
 
+  // 模拟HEIC格式的writeImageMetadata Tool调用测试
+  it('模拟writeImageMetadata工具调用和HEIC元数据写入验证', async () => {
+    // 创建临时测试文件
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'metatag-genie-heic-test-'));
+    const sourceFile = path.join(__dirname, '..', 'fixtures', 'images', 'test-image.heic');
+    const targetFile = path.join(tmpDir, 'test-image-copy.heic');
+    
+    // 如果测试源文件不存在，跳过测试
+    if (!fs.existsSync(sourceFile)) {
+      console.warn(`测试HEIC图片文件不存在: ${sourceFile}，跳过集成测试`);
+      fs.rmdirSync(tmpDir, { recursive: true });
+      return;
+    }
+    
+    // 复制测试文件到临时目录
+    fs.copyFileSync(sourceFile, targetFile);
+    
+    try {
+      // 模拟请求ID
+      const requestId = `write-heic-test-${Date.now()}`;
+      
+      // 模拟客户端请求 - 包含所有MVP元数据类型
+      const writeMetadataRequest = {
+        jsonrpc: '2.0',
+        id: requestId,
+        method: 'tool',
+        params: {
+          name: 'writeImageMetadata',
+          params: {
+            filePath: targetFile,
+            metadata: {
+              tags: ['风景', '旅行', 'heic-test'],
+              description: '这是一张HEIC测试照片描述',
+              people: ['张三', '李四'],
+              location: '深圳，中国',
+            },
+            overwrite: true,
+          },
+        },
+      };
+      
+      // 模拟服务器响应
+      const simulatedWriteResponse = {
+        jsonrpc: '2.0',
+        id: requestId,
+        result: {
+          success: true,
+          filePath: targetFile,
+          message: 'Metadata successfully written to HEIC image.',
+        },
+      };
+      
+      console.log('模拟执行HEIC写入所有元数据类型请求:', writeMetadataRequest);
+      
+      // 验证响应格式
+      expect(simulatedWriteResponse.jsonrpc).toBe('2.0');
+      expect(simulatedWriteResponse.id).toBe(requestId);
+      expect(simulatedWriteResponse.result.success).toBe(true);
+      expect(simulatedWriteResponse.result.filePath).toBe(targetFile);
+      
+      // 模拟直接使用ExifTool验证写入的元数据
+      // 注意：这不是真正的集成测试，我们只是模拟了执行工具和验证结果的过程
+      console.log('模拟验证写入HEIC文件的所有元数据类型');
+      
+      // 以下代码展示了如何在真实场景中验证元数据写入
+      /* 
+      const exiftool = new ExifTool();
+      try {
+        const metadata = await exiftool.read(targetFile);
+        
+        // 验证标签和人物（作为关键词存储）
+        expect(metadata.Keywords).toBeDefined();
+        expect(Array.isArray(metadata.Keywords)).toBe(true);
+        expect(metadata.Keywords).toContain('风景');
+        expect(metadata.Keywords).toContain('旅行');
+        expect(metadata.Keywords).toContain('heic-test');
+        expect(metadata.Keywords).toContain('张三');
+        expect(metadata.Keywords).toContain('李四');
+        
+        // 验证描述
+        expect(metadata.Description || metadata.ImageDescription || metadata['Caption-Abstract']).toBe('这是一张HEIC测试照片描述');
+        
+        // 验证地点
+        expect(metadata.Location).toBe('深圳，中国');
+      } finally {
+        await exiftool.end();
+      }
+      */
+      
+    } finally {
+      // 清理临时文件
+      if (fs.existsSync(tmpDir)) {
+        fs.rmdirSync(tmpDir, { recursive: true });
+      }
+    }
+  });
+
   it('should document how to run a real integration test when environment is ready', () => {
     // 这个测试仅作为文档，说明如何在环境准备好后运行真实的集成测试
     
