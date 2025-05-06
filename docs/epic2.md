@@ -46,7 +46,7 @@
     - AC5: (单元/集成测试) 覆盖 HEIC 格式下所有 MVP 元数据类型的写入与读取，确认 `exiftool-vendored` 被正确调用，并且写入的元数据位于预期的 EXIF/XMP 字段。
 - **完成情况:** 已于 2023/05/16 完成，开发者：Claude
 
-### Story 2.3: 在 `writeImageMetadata` Tool 中实现"人物"元数据（作为关键词）的处理 - 验证与确认
+### Story 2.3: 在 `writeImageMetadata` Tool 中实现"人物"元数据（作为关键词）的处理 - 验证与确认 ✅
 - **用户故事 / 目标:** 作为开发者，我需要验证并确保"人物"名称（作为关键词）能够被正确处理并写入到所有支持的图片格式 (JPG - 已在Epic 1完成, PNG, HEIC) 的元数据中，并能读取验证。
 - **详细需求:**
     - （JPG 的核心实现已在 Epic 1 Story 1.4 中完成）
@@ -59,6 +59,7 @@
     - AC2: 当为 PNG 和 HEIC 图片调用 `writeImageMetadata` Tool 并提供"人物"名称 (以及可选的标签)时，"人物"名称作为关键词被成功写入，并通过 ExifTool 或代码读取得到验证。
     - AC3: （已由 Epic 1 Story 1.4 覆盖 JPG）
     - AC4: 如果同时为 PNG/HEIC 提供 `tags` 和 `people`，则关键词字段包含两者的并集。
+- **完成情况:** 已于 2023/05/17 完成，开发者：Claude
 
 ### Story 2.4: 研究并实现"地点"文本元数据在 `writeImageMetadata` Tool 中的处理 - 最终确定与验证
 - **用户故事 / 目标:** 作为开发者，我需要**最终确定**存储文本型"地点"信息的最佳标准元数据字段，并验证 `writeImageMetadata` Tool 能够将"地点"文本成功写入所有支持的图片格式 (JPG - 已在Epic 1实现, PNG, HEIC) 的选定字段中，并能读取，目标是优化 Spotlight 的搜索效果。

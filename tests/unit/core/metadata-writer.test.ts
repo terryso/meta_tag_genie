@@ -420,6 +420,21 @@ describe('MetadataWriterService', () => {
       );
     });
     
+    it('调用ExifTool.write写入PNG格式图片的人物元数据', async () => {
+      await service.writeMetadataForImage('test.png', { 
+        people: ['张三', '李四']
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.png',
+        { 
+          Keywords: ['张三', '李四'],
+          Subject: ['张三', '李四']
+        },
+        ['-overwrite_original']
+      );
+    });
+    
     it('调用ExifTool.write写入PNG格式图片的所有MVP元数据类型', async () => {
       await service.writeMetadataForImage('test.png', { 
         tags: ['风景', '建筑'],
@@ -472,6 +487,21 @@ describe('MetadataWriterService', () => {
           ImageDescription: '这是一张HEIC测试图片',
           'Caption-Abstract': '这是一张HEIC测试图片',
           Description: '这是一张HEIC测试图片'
+        },
+        ['-overwrite_original']
+      );
+    });
+    
+    it('调用ExifTool.write写入HEIC格式图片的人物元数据', async () => {
+      await service.writeMetadataForImage('test.heic', { 
+        people: ['赵六', '王五']
+      });
+      
+      expect((mockExifTool as any).write).toHaveBeenCalledWith(
+        'test.heic',
+        { 
+          Keywords: ['赵六', '王五'],
+          Subject: ['赵六', '王五']
         },
         ['-overwrite_original']
       );
