@@ -1,0 +1,48 @@
+{
+  "name": "metatag-genie",
+  "version": "0.1.0",
+  "description": "一个基于 Node.js 和 TypeScript 的 MCP 服务，用于读写图片元数据",
+  "main": "dist/main.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts --report-unused-disable-directives",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "start:dev": "ts-node src/main.ts",
+    "start": "node dist/main.js",
+    "prebuild": "npm run lint",
+    "postbuild": "echo '构建完成！'"
+  },
+  "keywords": [
+    "mcp",
+    "metadata",
+    "exif",
+    "image",
+    "tagging"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.20",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
+    "@typescript-eslint/parser": "^6.19.1",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.4",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "exiftool-vendored": "^29.3.0",
+    "zod": "^3.24.4"
+  }
+}

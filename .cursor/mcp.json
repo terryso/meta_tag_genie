@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "TAV2": {
+      "command": "env",
+      "args": [
+        "TAVILY_API_KEY=YOUR-FREE-API-KEY-HERE",
+        "npx",
+        "-y",
+        "tavily-mcp@0.1.3"
+      ]
+    },
+    "MetaTagGenie": {
+      "command": "node",
+      "args": [
+        "/Users/nick/CascadeProjects/meta_tag_genie/dist/main.js"
+      ]
+    }
+  }
+}
