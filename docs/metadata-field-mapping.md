@@ -1,86 +1,51 @@
 # 元数据字段映射文档
 
-本文档记录了Meta Tag Genie项目中使用的各种元数据字段的映射关系，特别是针对不同图片格式(JPG、PNG、HEIC)的处理。
+本文档详细记录了Meta Tag Genie应用如何将用户提供的元数据(标签、描述、人物、地点)映射到标准的EXIF, IPTC和XMP元数据字段,以实现跨格式(JPG, PNG, HEIC)的一致元数据处理。
 
-## 图片元数据字段
+## 映射概述
 
-Meta Tag Genie支持以下类型的元数据：
+我们针对每种元数据类型采用了"多字段写入策略",将用户提供的元数据同时写入多个标准元数据字段,以确保:
 
-| 元数据类型 | 内部字段名 | 描述 |
-|---------|-----------|------|
-| 标签 | `tags` | 描述图片内容的关键词 |
-| 描述 | `description` | 图片的文本描述 |
-| 人物 | `people` | 图片中出现的人物名称 |
-| 地点 | `location` | 图片拍摄或相关的地点描述 |
+1. **Spotlight索引效率:** 选择macOS Spotlight常用索引的字段
+2. **跨工具兼容性:** 确保不同的图片查看/编辑软件能够读取到元数据
+3. **遵循元数据标准:** 尊重EXIF, IPTC和XMP等标准规范
 
-## 地点元数据字段选择
+## 详细字段映射表
 
-### 地点(location)元数据字段分析
+| 用户输入字段 | 逻辑元数据类型 | 目标标准元数据标签 (完整名称) | exiftool-vendored参数键名 | 理由/备注 |
+|------------|--------------|---------------------------|------------------------|----------|
+| `tags` | 关键词/标签 | `IPTC:Keywords`,<br>`XMP:dc:subject` | `Keywords`,<br>`Subject` | 同时写入IPTC和XMP标签字段,确保最大化兼容性。Spotlight优先索引这些关键词字段。 |
+| `people` | 人物(作为关键词) | `IPTC:Keywords`,<br>`XMP:dc:subject` | `Keywords`,<br>`Subject` | 将人物名称作为关键词处理,与tags合并写入相同字段。更专业的人脸识别标记需要更复杂的XMP结构,不在MVP范围内。 |
+| `description` | 图像描述 | `EXIF:ImageDescription`,<br>`IPTC:Caption-Abstract`,<br>`XMP:dc:description` | `ImageDescription`,<br>`Caption-Abstract`,<br>`Description` | 在三个主要标准中都写入描述,确保不同软件都能读取到描述内容。Spotlight会索引这些描述字段。 |
+| `location` | 地点(自由文本) | `XMP:photoshop:Location` | `Location`,<br>`XMP-photoshop:Location` | 经研究,发现`XMP:photoshop:Location`是存储简单地点文本最合适的字段,且被Spotlight较好地索引。不使用GPS坐标相关字段,因为我们处理的是文本描述,而不是地理坐标。 |
 
-在为"地点"文本元数据选择最佳存储字段时，我们考虑了以下备选项：
+## 读取优先级
 
-| 元数据字段 | 格式 | 优点 | 缺点 |
-|----------|------|------|------|
-| `XMP-photoshop:Location` | XMP | 语义明确，被Adobe产品广泛支持，在macOS上被Spotlight索引 | 不是由严格地理标准定义 |
-| `IPTC:Sub-location` / `XMP-iptcCore:Location` | IPTC/XMP | 是IPTC Core标准的一部分，被专业图片管理软件支持 | 在一些消费级软件中可能支持较弱 |
-| `XMP-dc:coverage` | XMP | Dublin Core元数据标准的一部分 | 语义较为广泛，不仅限于具体地点描述 |
-| `XMP-iptcExt:LocationShown` | XMP | IPTC扩展标准的一部分，专为图片内容中显示的地点设计 | 结构较复杂，是一个复合字段 |
+对于可能存在于多个字段的元数据(如描述),我们定义了以下读取优先级:
 
-### 最终选择：`XMP-photoshop:Location`
+1. **描述(Description):**
+   - 首先尝试读取: `XMP:dc:description`
+   - 其次尝试读取: `IPTC:Caption-Abstract`
+   - 最后尝试读取: `EXIF:ImageDescription`
 
-经过研究和测试，我们最终选择使用 **`XMP-photoshop:Location`** 作为存储地点文本描述的标准字段，主要基于以下理由：
+2. **标签与人物(Keywords/Tags):**
+   - 收集所有来自`IPTC:Keywords`和`XMP:dc:subject`的关键词
+   - 合并去重后作为`tags`返回
 
-1. **Spotlight兼容性**：macOS Spotlight能够索引此字段，使用户能够通过地点信息搜索图片。
-2. **软件生态支持**：Adobe产品(Photoshop、Lightroom等)以及其他主流图片管理软件广泛支持此字段。
-3. **语义清晰**：字段名称直观表达了其用途，适合存储自由文本形式的地点描述。
-4. **跨平台兼容性**：在不同系统和应用中有较好的支持度。
-5. **exiftool-vendored支持**：我们使用的exiftool-vendored库能够无缝读写此字段。
+3. **地点(Location):**
+   - 首先尝试读取: `Location` (简写形式)
+   - 其次尝试读取: `XMP-photoshop:Location` (完整形式)
 
-## 元数据字段在不同格式中的实现
+## 格式兼容性说明
 
-### JPG格式
+此映射方案已经确认适用于所有三种支持的图片格式:
 
-| 元数据类型 | 写入字段 | 读取字段 |
-|----------|---------|---------|
-| 标签/人物 | `IPTC:Keywords`, `XMP-dc:Subject` | `IPTC:Keywords`, `XMP-dc:Subject` |
-| 描述 | `EXIF:ImageDescription`, `IPTC:Caption-Abstract`, `XMP-dc:Description` | `XMP-dc:Description`, `IPTC:Caption-Abstract`, `EXIF:ImageDescription` |
-| 地点 | `XMP-photoshop:Location` | `XMP-photoshop:Location` |
+- **JPG/JPEG:** 完全支持所有元数据字段
+- **PNG:** 完全支持所有元数据字段(主要通过XMP块存储)
+- **HEIC:** 完全支持所有元数据字段
 
-### PNG格式
+## 技术实现注意事项
 
-| 元数据类型 | 写入字段 | 读取字段 |
-|----------|---------|---------|
-| 标签/人物 | `IPTC:Keywords`, `XMP-dc:Subject` | `IPTC:Keywords`, `XMP-dc:Subject` |
-| 描述 | `EXIF:ImageDescription`, `IPTC:Caption-Abstract`, `XMP-dc:Description` | `XMP-dc:Description`, `IPTC:Caption-Abstract`, `EXIF:ImageDescription` |
-| 地点 | `XMP-photoshop:Location` | `XMP-photoshop:Location` |
-
-### HEIC格式
-
-| 元数据类型 | 写入字段 | 读取字段 |
-|----------|---------|---------|
-| 标签/人物 | `IPTC:Keywords`, `XMP-dc:Subject` | `IPTC:Keywords`, `XMP-dc:Subject` |
-| 描述 | `EXIF:ImageDescription`, `IPTC:Caption-Abstract`, `XMP-dc:Description` | `XMP-dc:Description`, `IPTC:Caption-Abstract`, `EXIF:ImageDescription` |
-| 地点 | `XMP-photoshop:Location` | `XMP-photoshop:Location` |
-
-## 元数据字段与exiftool参数的映射
-
-在使用exiftool-vendored库时，我们使用以下参数名：
-
-| 元数据类型 | exiftool参数名 |
-|----------|---------------|
-| 标签/人物 | `Keywords`, `Subject` |
-| 描述 | `ImageDescription`, `Caption-Abstract`, `Description` |
-| 地点 | `XMP-photoshop:Location` |
-
-## Spotlight索引验证结果
-
-我们对`XMP-photoshop:Location`字段在macOS Spotlight中的索引效果进行了验证：
-
-1. **验证方法**：使用`writeImageMetadata` Tool将地点信息写入测试图片，然后在Finder中使用Spotlight搜索该地点名称。
-2. **验证结果**：在写入地点信息后，macOS能够通过Spotlight搜索到相应图片，证实该字段被成功索引。
-3. **兼容性**：在JPG、PNG和HEIC格式上均验证了索引效果，确保跨格式的一致性。
-
-## 注意事项
-
-1. 虽然我们选择了`XMP-photoshop:Location`作为主要字段，但实际写入时，在exiftool参数中使用的是`Location`，这是exiftool的简写形式。
-2. 不同软件可能优先读取不同位置的元数据，我们的实现确保了在主流软件中都能正确展示地点信息。 
+- 在`MetadataWriterService.writeMetadataForImage`方法中,根据用户提供的元数据构建适当的`exiftoolArgs`对象。
+- 使用`exiftool-vendored`库的参数命名约定,有些字段可以使用简写形式(如`Keywords`),而某些字段则需要完整形式(如`XMP-photoshop:Location`)。
+- 在所有支持的格式上使用统一的字段映射,确保一致的用户体验。 
