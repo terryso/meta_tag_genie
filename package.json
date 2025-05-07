@@ -17,7 +17,10 @@
     "start:dev": "ts-node src/main.ts",
     "start": "node dist/main.js",
     "prebuild": "npm run lint",
-    "postbuild": "echo '构建完成！'"
+    "postbuild": "echo '构建完成！'",
+    "tools:list": "node src/tools/list-tools.js",
+    "tools:write": "node src/tools/write-metadata.js",
+    "tools:spotlight": "node src/tools/spotlight-test-setup.js"
   },
   "keywords": [
     "mcp",

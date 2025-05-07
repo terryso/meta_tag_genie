@@ -3,42 +3,38 @@
  * MetaTag Genie MCP工具列表查询脚本
  * 
  * 该脚本使用MCP SDK查询MetaTag Genie服务支持的工具列表。
+ * 
+ * 使用方法:
+ * node src/tools/list-tools.js
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import McpClient from './utils/mcp-client.mjs';
 
 // 主函数 - 使用async/await处理异步操作
 async function main() {
   console.log("\n=== MetaTag Genie MCP工具列表 ===\n");
   console.log("正在连接MetaTag Genie服务...");
 
-  // 创建传输层 - 连接到本地服务
-  const transport = new StdioClientTransport({
-    command: "node",
-    args: ["dist/main.js"]
-  });
-
-  // 创建MCP客户端
-  const client = new Client({
-    name: "ToolListClient",
-    version: "1.0.0"
+  // 创建 MCP 客户端
+  const mcpClient = new McpClient({
+    clientName: "ToolListClient",
+    clientVersion: "1.0.0"
   });
 
   try {
     // 连接到服务
-    await client.connect(transport);
+    await mcpClient.connect();
     console.log("成功连接到MetaTag Genie服务！");
 
     // 显示已知工具信息
-    await displayTools(client);
+    await displayTools(mcpClient);
     
   } catch (error) {
     console.error(`连接或查询服务时出错: ${error.message}`);
   } finally {
     // 关闭连接
     try {
-      await client.close();
+      await mcpClient.close();
     } catch (e) {
       // 忽略关闭时的错误
     }
@@ -48,13 +44,13 @@ async function main() {
 /**
  * 显示工具信息并尝试列出工具
  */
-async function displayTools(client) {
+async function displayTools(mcpClient) {
   // 尝试使用SDK的listTools方法获取工具列表
   let toolsFound = false;
   
   try {
     console.log("尝试获取工具列表...");
-    const response = await client.listTools();
+    const response = await mcpClient.listTools();
     
     // 处理响应格式 { tools: [...] }
     const tools = response?.tools || [];
@@ -74,10 +70,10 @@ async function displayTools(client) {
         // 如果工具是writeImageMetadata，显示使用示例
         if (tool.name === 'writeImageMetadata') {
           console.log("   示例:");
-          console.log("   $ node tools/write-metadata.js ~/Desktop/test.jpg tags-desc");
-          console.log("   $ node tools/write-metadata.js ~/Desktop/test.jpg people");
-          console.log("   $ node tools/write-metadata.js ~/Desktop/test.jpg location");
-          console.log("   $ node tools/write-metadata.js ~/Desktop/test.jpg all");
+          console.log("   $ node src/tools/write-metadata.js ~/Desktop/test.jpg tags-desc");
+          console.log("   $ node src/tools/write-metadata.js ~/Desktop/test.jpg people");
+          console.log("   $ node src/tools/write-metadata.js ~/Desktop/test.jpg location");
+          console.log("   $ node src/tools/write-metadata.js ~/Desktop/test.jpg all");
         }
         
         console.log("");
@@ -86,8 +82,8 @@ async function displayTools(client) {
       // 显示批量处理工具信息
       console.log("批量处理工具:");
       console.log("- Spotlight测试批量准备:");
-      console.log("  $ node tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images");
-      console.log("\n更多使用说明请参考: tools/README.md\n");
+      console.log("  $ node src/tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images");
+      console.log("\n更多使用说明请参考: src/tools/README.md\n");
       
       // 提示如何验证
       console.log("提示: 写入元数据后可使用以下命令验证:");
@@ -140,8 +136,8 @@ async function displayTools(client) {
     // 显示批量处理工具信息
     console.log("批量处理工具:");
     console.log("- Spotlight测试批量准备:");
-    console.log("  $ node tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images");
-    console.log("\n更多使用说明请参考: tools/README.md\n");
+    console.log("  $ node src/tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images");
+    console.log("\n更多使用说明请参考: src/tools/README.md\n");
     
     // 提示如何验证
     console.log("提示: 写入元数据后可使用以下命令验证:");

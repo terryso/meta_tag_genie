@@ -29,23 +29,23 @@ npm run build
 
 ```bash
 # 添加标签和描述
-node tools/write-metadata.js ~/Desktop/test.jpg tags-desc
+node src/tools/write-metadata.js ~/Desktop/test.jpg tags-desc
 
 # 添加人物信息
-node tools/write-metadata.js ~/Desktop/test.jpg people
+node src/tools/write-metadata.js ~/Desktop/test.jpg people
 
 # 添加地点信息
-node tools/write-metadata.js ~/Desktop/test.jpg location
+node src/tools/write-metadata.js ~/Desktop/test.jpg location
 
 # 添加所有类型元数据
-node tools/write-metadata.js ~/Desktop/test.jpg all
+node src/tools/write-metadata.js ~/Desktop/test.jpg all
 ```
 
 ### Spotlight 测试批量准备
 
 ```bash
 # 创建所有测试用例
-node tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images
+node src/tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images
 
 # 强制 Spotlight 立即索引
 mdimport ~/Desktop/spotlight-test-images

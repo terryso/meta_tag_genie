@@ -5,23 +5,23 @@
  * 为不同图片格式准备测试数据，方便Spotlight搜索验证。
  * 
  * 使用方法：
- * node tools/spotlight-test-setup.js <目标目录>
+ * node src/tools/spotlight-test-setup.js <目标目录>
  * 
  * 示例：
- * node tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images
+ * node src/tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images
  */
 
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
+import McpClient from './utils/mcp-client.mjs';
 
 // 检查命令行参数
 const targetDir = process.argv[2];
 
 if (!targetDir) {
-  console.error("\n用法: node tools/spotlight-test-setup.js <目标目录>");
+  console.error("\n用法: node src/tools/spotlight-test-setup.js <目标目录>");
   console.error("\n示例:");
-  console.error("  node tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images\n");
+  console.error("  node src/tools/spotlight-test-setup.js ~/Desktop/spotlight-test-images\n");
   process.exit(1);
 }
 
@@ -216,31 +216,52 @@ if (!fs.existsSync(fixturesDir)) {
   
   console.log(`找到的测试图片: ${Object.keys(availableImages).join(', ')}`);
   
+  // 创建 MCP 客户端
+  const mcpClient = new McpClient({
+    clientName: "SpotlightTestSetup",
+    clientVersion: "1.0.0"
+  });
+  
   // 处理每个测试用例
   let processed = 0;
   let skipped = 0;
   
-  for (const testCase of testCases) {
-    if (!availableImages[testCase.format]) {
-      console.log(`跳过测试 ${testCase.id}: 不支持 ${testCase.format} 格式`);
-      skipped++;
-      continue;
+  try {
+    // 连接 MCP 服务
+    await mcpClient.connect();
+    console.log("MCP 服务连接成功");
+    
+    for (const testCase of testCases) {
+      if (!availableImages[testCase.format]) {
+        console.log(`跳过测试 ${testCase.id}: 不支持 ${testCase.format} 格式`);
+        skipped++;
+        continue;
+      }
+      
+      // 创建测试图片
+      const targetPath = path.join(resolvedDir, `${testCase.id}.${testCase.format}`);
+      fs.copyFileSync(availableImages[testCase.format], targetPath);
+      
+      console.log(`\n处理测试图片 [${testCase.id}]: ${targetPath}`);
+      console.log(`元数据: ${JSON.stringify(testCase.metadata, null, 2)}`);
+      
+      // 使用MCP服务写入元数据
+      try {
+        await mcpClient.writeImageMetadata(targetPath, testCase.metadata);
+        processed++;
+        console.log(`✓ 测试 ${testCase.id} 成功处理`);
+      } catch (error) {
+        console.error(`✗ 测试 ${testCase.id} 处理失败: ${error.message}`);
+      }
     }
-    
-    // 创建测试图片
-    const targetPath = path.join(resolvedDir, `${testCase.id}.${testCase.format}`);
-    fs.copyFileSync(availableImages[testCase.format], targetPath);
-    
-    console.log(`\n处理测试图片 [${testCase.id}]: ${targetPath}`);
-    console.log(`元数据: ${JSON.stringify(testCase.metadata, null, 2)}`);
-    
-    // 使用MCP服务写入元数据
+  } catch (error) {
+    console.error(`MCP 服务错误: ${error.message}`);
+  } finally {
+    // 关闭 MCP 客户端
     try {
-      await writeMetadata(targetPath, testCase.metadata);
-      processed++;
-      console.log(`✓ 测试 ${testCase.id} 成功处理`);
-    } catch (error) {
-      console.error(`✗ 测试 ${testCase.id} 处理失败: ${error.message}`);
+      await mcpClient.close();
+    } catch (e) {
+      // 忽略关闭时的错误
     }
   }
   
@@ -251,114 +272,4 @@ if (!fs.existsSync(fixturesDir)) {
   console.log(`\n提示: 可以使用以下命令强制Spotlight立即索引目录:`);
   console.log(`mdimport ${targetDir}`);
   console.log(`\n然后使用docs/manual-spotlight-tests.md中的搜索测试矩阵进行验证。`);
-})();
-
-/**
- * 使用MCP服务写入元数据
- */
-function writeMetadata(filePath, metadata) {
-  return new Promise((resolve, reject) => {
-    // 启动服务
-    const mcpProcess = spawn('node', ['dist/main.js'], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    
-    let initialized = false;
-    let toolResponded = false;
-    let errorMessage = '';
-    
-    // 响应处理
-    mcpProcess.stdout.on('data', (data) => {
-      const dataStr = data.toString();
-      const lines = dataStr.split('\n').filter(line => line.trim());
-      
-      for (const line of lines) {
-        try {
-          const response = JSON.parse(line);
-          
-          // 调试输出
-          console.log(`收到服务响应: ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
-          
-          // 初始化响应
-          if (!initialized && response.id === 'init-request') {
-            initialized = true;
-            console.log("服务初始化成功，发送元数据写入请求...");
-            
-            // 发送工具请求
-            const request = {
-              jsonrpc: '2.0',
-              id: 'test-request',
-              method: 'tool',
-              params: {
-                name: 'writeImageMetadata',
-                params: {
-                  filePath: filePath,
-                  metadata: metadata,
-                  overwrite: true
-                }
-              }
-            };
-            
-            console.log("发送请求: ", JSON.stringify(request).substring(0, 100));
-            mcpProcess.stdin.write(`${JSON.stringify(request)}\n`);
-          }
-          
-          // 工具响应
-          if (!toolResponded && response.id === 'test-request') {
-            toolResponded = true;
-            
-            if (response.error) {
-              errorMessage = response.error.message;
-              reject(new Error(errorMessage));
-            } else {
-              // 终止进程
-              setTimeout(() => {
-                mcpProcess.kill();
-                resolve();
-              }, 500);
-            }
-          }
-        } catch (e) {
-          // 跳过非JSON行
-          console.log(`非JSON行或解析错误: ${line.substring(0, 50)}...`);
-        }
-      }
-    });
-    
-    // 错误处理
-    mcpProcess.stderr.on('data', (data) => {
-      console.error(`服务错误: ${data.toString()}`);
-      errorMessage += data.toString();
-    });
-    
-    // 进程结束处理
-    mcpProcess.on('close', (code) => {
-      if (code !== 0 && !toolResponded) {
-        reject(new Error(errorMessage || `服务退出，退出码: ${code}`));
-      }
-    });
-    
-    // 发送初始化请求
-    const initRequest = {
-      jsonrpc: '2.0',
-      id: 'init-request',
-      method: 'initialize',
-      params: {
-        processId: process.pid,
-        clientInfo: { name: 'SpotlightTestSetup', version: '1.0.0' },
-        capabilities: {},
-        protocolVersion: '0.1.0'
-      }
-    };
-    
-    mcpProcess.stdin.write(`${JSON.stringify(initRequest)}\n`);
-    
-    // 设置超时
-    setTimeout(() => {
-      if (!toolResponded) {
-        mcpProcess.kill();
-        reject(new Error('操作超时'));
-      }
-    }, 10000);
-  });
-} 
+})(); 
