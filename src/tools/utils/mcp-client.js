@@ -91,7 +91,7 @@ class McpClient {
     try {
       return await this.client.listTools();
     } catch (error) {
-      console.warn(`获取工具列表失败: ${error.message}`);
+      // console.warn(`获取工具列表失败: ${error.message}`);
       return { tools: [] };
     }
   }

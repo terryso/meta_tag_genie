@@ -188,7 +188,7 @@ describe('元数据写入验证 - E2E测试', () => {
           try {
             testImagePath = await createTestImageFile(tempDir, format);
           } catch (error) {
-            console.warn(`无法创建${format}格式的测试图片, 跳过此测试:`, (error as Error).message);
+            // console.warn(`无法创建${format}格式的测试图片, 跳过此测试:`, (error as Error).message);
             return;
           }
           

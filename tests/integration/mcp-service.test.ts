@@ -72,8 +72,8 @@ describe('MCP Service Integration Tests', () => {
     
     // 如果测试源文件不存在，跳过测试
     if (!fs.existsSync(sourceFile)) {
-      console.warn(`测试图片文件不存在: ${sourceFile}，跳过集成测试`);
-      fs.rmdirSync(tmpDir, { recursive: true });
+      // console.warn(`测试图片文件不存在: ${sourceFile}，跳过集成测试`);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
       return;
     }
     
@@ -156,7 +156,7 @@ describe('MCP Service Integration Tests', () => {
     } finally {
       // 清理临时文件
       if (fs.existsSync(tmpDir)) {
-        fs.rmdirSync(tmpDir, { recursive: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     }
   });
@@ -170,8 +170,8 @@ describe('MCP Service Integration Tests', () => {
     
     // 如果测试源文件不存在，跳过测试
     if (!fs.existsSync(sourceFile)) {
-      console.warn(`测试HEIC图片文件不存在: ${sourceFile}，跳过集成测试`);
-      fs.rmdirSync(tmpDir, { recursive: true });
+      // console.warn(`测试HEIC图片文件不存在: ${sourceFile}，跳过集成测试`);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
       return;
     }
     
@@ -213,7 +213,7 @@ describe('MCP Service Integration Tests', () => {
         },
       };
       
-      console.log('模拟执行HEIC写入所有元数据类型请求:', writeMetadataRequest);
+      // console.log('模拟执行HEIC写入所有元数据类型请求:', writeMetadataRequest);
       
       // 验证响应格式
       expect(simulatedWriteResponse.jsonrpc).toBe('2.0');
@@ -253,7 +253,7 @@ describe('MCP Service Integration Tests', () => {
     } finally {
       // 清理临时文件
       if (fs.existsSync(tmpDir)) {
-        fs.rmdirSync(tmpDir, { recursive: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     }
   });

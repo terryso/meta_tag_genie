@@ -50,7 +50,7 @@ describe('HEIC图片元数据写入测试', () => {
     if (fs.existsSync(sourceHeicPath)) {
       fs.copyFileSync(sourceHeicPath, tempHeicPath);
     } else {
-      console.warn('⚠️ 警告: 没有找到HEIC测试图片。集成测试将使用模拟。');
+      // console.warn('⚠️ 警告: 没有找到HEIC测试图片。集成测试将使用模拟。');
       // 创建一个空的文件作为替代，仅用于模拟测试
       // 注意：在真实环境中，这不是一个有效的HEIC文件，exiftool可能无法正确处理
       fs.writeFileSync(tempHeicPath, Buffer.from(''));
@@ -76,7 +76,7 @@ describe('HEIC图片元数据写入测试', () => {
     // 检查是否有真实的HEIC测试文件
     const hasRealHeicFile = fs.existsSync(path.join(__dirname, '..', 'fixtures', 'images', 'test-image.heic'));
     if (!hasRealHeicFile) {
-      console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
+      // console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
       // 如果没有真实的HEIC文件，我们将执行模拟测试
     }
     
@@ -143,7 +143,7 @@ describe('HEIC图片元数据写入测试', () => {
     // 检查是否有真实的HEIC测试文件
     const hasRealHeicFile = fs.existsSync(path.join(__dirname, '..', 'fixtures', 'images', 'test-image.heic'));
     if (!hasRealHeicFile) {
-      console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
+      // console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
     }
     
     // 只包含people的元数据
@@ -196,7 +196,7 @@ describe('HEIC图片元数据写入测试', () => {
     // 检查是否有真实的HEIC测试文件
     const hasRealHeicFile = fs.existsSync(path.join(__dirname, '..', 'fixtures', 'images', 'test-image.heic'));
     if (!hasRealHeicFile) {
-      console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
+      // console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
     }
     
     // 同时包含tags和people的元数据
@@ -250,7 +250,7 @@ describe('HEIC图片元数据写入测试', () => {
     // 检查是否有真实的HEIC测试文件
     const hasRealHeicFile = fs.existsSync(path.join(__dirname, '..', 'fixtures', 'images', 'test-image.heic'));
     if (!hasRealHeicFile) {
-      console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
+      // console.warn('⚠️ 没有找到HEIC测试图片，使用模拟测试。');
     }
     
     // people为空数组的元数据
@@ -363,11 +363,11 @@ describe('HEIC图片元数据写入测试', () => {
     // 在实际产品环境中，应使用真实的HEIC文件进行测试
     
     // 添加一个明确的跳过消息
-    console.warn('⚠️ 跳过HEIC完整性测试，这需要一个真实的HEIC文件。');
-    console.warn('在实际部署前，建议使用真实的iOS设备生成的HEIC照片进行手动测试，验证以下内容：');
-    console.warn('- 写入元数据后HEIC文件保持完好且可查看');
-    console.warn('- 能够成功读取/写入所有元数据类型（标签、描述、人物、地点）');
-    console.warn('- 文件操作完成后不会损坏HEIC文件结构');
+    // console.warn('⚠️ 跳过HEIC完整性测试，这需要一个真实的HEIC文件。');
+    // console.warn('在实际部署前，建议使用真实的iOS设备生成的HEIC照片进行手动测试，验证以下内容：');
+    // console.warn('- 写入元数据后HEIC文件保持完好且可查看');
+    // console.warn('- 能够成功读取/写入所有元数据类型（标签、描述、人物、地点）');
+    // console.warn('- 文件操作完成后不会损坏HEIC文件结构');
     
     // 这里一个空的测试通过断言，而不是抛出错误
     expect(true).toBe(true);

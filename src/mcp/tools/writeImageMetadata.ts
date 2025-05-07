@@ -53,8 +53,6 @@ export async function writeImageMetadataHandler(
   context: { app: { metadataWriter: MetadataWriterService } }
 ): Promise<WriteImageMetadataResult> {
   try {
-    console.log('处理writeImageMetadata请求，文件:', params.filePath);
-    
     // 检查是否为相对路径
     if (isRelativePath(params.filePath)) {
       throw new RelativePathError(params.filePath);
@@ -94,8 +92,6 @@ export async function writeImageMetadataHandler(
       message: successMessage,
     };
   } catch (error) {
-    console.error('writeImageMetadata工具处理器出错:', error);
-    
     // 如果已经是JsonRpcError类型，直接向上抛出
     if (error instanceof JsonRpcError) {
       throw error;

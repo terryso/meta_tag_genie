@@ -29,7 +29,7 @@ export function initializeGracefulShutdown(
     return new Promise<T | undefined>((resolve) => {
       // 设置超时
       const timeout = setTimeout(() => {
-        console.warn(`${operationName} 操作超时 (${timeoutMs}ms)。继续关闭流程。`);
+        // console.warn(`${operationName} 操作超时 (${timeoutMs}ms)。继续关闭流程。`);
         resolve(undefined);
       }, timeoutMs);
 

@@ -29,7 +29,6 @@ export class MetadataWriterService {
     this.exiftool = new ExifTool({ 
       taskTimeoutMillis: taskTimeoutMs || this.defaultTaskTimeoutMs 
     });
-    console.log(`ExifTool实例已创建，任务超时设置为: ${taskTimeoutMs || this.defaultTaskTimeoutMs}ms`);
   }
 
   /**
@@ -44,12 +43,9 @@ export class MetadataWriterService {
         throw new FileNotFoundError(filePath);
       }
       
-      console.log(`Reading metadata for: ${filePath}`); // 临时日志
       const tags = await this.exiftool.read(filePath);
       return tags;
     } catch (error) {
-      console.error(`Error reading metadata for ${filePath}:`, error);
-      
       // 如果已经是自定义错误则直接抛出
       if (error instanceof FileNotFoundError) {
         throw error;
@@ -106,56 +102,47 @@ export class MetadataWriterService {
    * @returns Promise<Partial<ImageMetadataArgs>> 包含图片所有元数据的对象
    */
   async readMetadataForImage(filePath: string): Promise<Partial<ImageMetadataArgs>> {
-    try {
-      // 获取文件扩展名（小写）用于日志记录
-      const fileExt = filePath.toLowerCase().split('.').pop() || '';
-      console.log(`处理${fileExt.toUpperCase()}图片格式的元数据读取: ${filePath}`);
-      
-      const tagsFromFile = await this.readRawMetadata(filePath);
-      const result: Partial<ImageMetadataArgs> = {};
-      
-      // 读取标签和人物 (Keywords/Subject)
-      let allKeywords: string[] = [];
-      if (tagsFromFile.Keywords) { // IPTC
-        allKeywords = allKeywords.concat(Array.isArray(tagsFromFile.Keywords) 
-          ? tagsFromFile.Keywords 
-          : [tagsFromFile.Keywords as string]);
-      }
-      if (tagsFromFile.Subject) { // XMP
-        const subjectKeywords = Array.isArray(tagsFromFile.Subject) 
-          ? tagsFromFile.Subject 
-          : [tagsFromFile.Subject as string];
-        allKeywords = allKeywords.concat(subjectKeywords);
-      }
-      
-      // 去重并赋值 (为简化，此处不区分标签和人物)
-      if (allKeywords.length > 0) {
-        result.tags = [...new Set(allKeywords)];
-      }
-      
-      // 读取描述 (按优先级顺序尝试不同字段)
-      if (tagsFromFile.Description) {
-        result.description = tagsFromFile.Description as string;
-      } else if (tagsFromFile['Caption-Abstract']) {
-        result.description = tagsFromFile['Caption-Abstract'] as string;
-      } else if (tagsFromFile.ImageDescription) {
-        result.description = tagsFromFile.ImageDescription as string;
-      }
-      
-      // 读取地点
-      if (tagsFromFile.Location) {
-        result.location = tagsFromFile.Location as string;
-      } else if ((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]) {
-        // 使用类型断言解决TypeScript类型检查问题
-        result.location = String((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error(`Error reading metadata from ${filePath}:`, error);
-      // 向上抛出错误，保持错误类型
-      throw error;
+    // 获取文件扩展名（小写）用于处理不同文件格式特性（如果需要）
+    const tagsFromFile = await this.readRawMetadata(filePath);
+    const result: Partial<ImageMetadataArgs> = {};
+    
+    // 读取标签和人物 (Keywords/Subject)
+    let allKeywords: string[] = [];
+    if (tagsFromFile.Keywords) { // IPTC
+      allKeywords = allKeywords.concat(Array.isArray(tagsFromFile.Keywords) 
+        ? tagsFromFile.Keywords 
+        : [tagsFromFile.Keywords as string]);
     }
+    if (tagsFromFile.Subject) { // XMP
+      const subjectKeywords = Array.isArray(tagsFromFile.Subject) 
+        ? tagsFromFile.Subject 
+        : [tagsFromFile.Subject as string];
+      allKeywords = allKeywords.concat(subjectKeywords);
+    }
+    
+    // 去重并赋值 (为简化，此处不区分标签和人物)
+    if (allKeywords.length > 0) {
+      result.tags = [...new Set(allKeywords)];
+    }
+    
+    // 读取描述 (按优先级顺序尝试不同字段)
+    if (tagsFromFile.Description) {
+      result.description = tagsFromFile.Description as string;
+    } else if (tagsFromFile['Caption-Abstract']) {
+      result.description = tagsFromFile['Caption-Abstract'] as string;
+    } else if (tagsFromFile.ImageDescription) {
+      result.description = tagsFromFile.ImageDescription as string;
+    }
+    
+    // 读取地点
+    if (tagsFromFile.Location) {
+      result.location = tagsFromFile.Location as string;
+    } else if ((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]) {
+      // 使用类型断言解决TypeScript类型检查问题
+      result.location = String((tagsFromFile as Record<string, unknown>)["XMP-photoshop:Location"]);
+    }
+    
+    return result;
   }
 
   /**
@@ -205,10 +192,6 @@ export class MetadataWriterService {
         throw new MetadataWriteError(filePath, error as Error);
       }
 
-      // 获取文件扩展名（小写）用于日志记录
-      const fileExt = filePath.toLowerCase().split('.').pop() || '';
-      console.log(`处理${fileExt.toUpperCase()}图片格式的元数据写入: ${filePath}`);
-
       // 构建传递给exiftool的参数对象
       const exiftoolArgs: Record<string, unknown> = {};
       
@@ -239,7 +222,6 @@ export class MetadataWriterService {
       
       // 如果没有实际需要写入的元数据，则提前返回
       if (Object.keys(exiftoolArgs).length === 0) {
-        console.log(`No metadata to write for ${filePath}`);
         return;
       }
 
@@ -281,19 +263,15 @@ export class MetadataWriterService {
         } catch (error) {
           // 如果读取失败但不是因为文件不存在，记录错误但继续尝试写入
           if (!(error instanceof FileNotFoundError)) {
-            console.warn(`Failed to read existing metadata for non-overwrite mode: ${error}`);
+            // 继续执行，不中断流程
           }
         }
       }
 
       // 执行写入操作
       try {
-        console.log(`Writing metadata to ${filePath}, args:`, JSON.stringify(exiftoolArgs));
         await this.exiftool.write(filePath, exiftoolArgs, exiftoolOptions);
-        console.log(`成功写入元数据到文件: ${filePath}`);
       } catch (error) {
-        console.error(`写入元数据到文件 ${filePath} 失败:`, error);
-        
         // 检查错误类型，转换为更具体的错误
         const errorMessage = error instanceof Error ? error.message : String(error);
         const stderrContent = (error as unknown as { stderr?: string }).stderr || '';
@@ -303,6 +281,7 @@ export class MetadataWriterService {
             stderrContent.includes('format not recognized') ||
             errorMessage.includes('Unknown file type')) {
           
+          const fileExt = filePath.toLowerCase().split('.').pop() || '';
           throw new UnsupportedFileFormatError(filePath, fileExt);
         }
         
@@ -357,7 +336,6 @@ export class MetadataWriterService {
       }
       
       // 转换其他错误为MetadataWriteError
-      console.error("写入元数据时发生未捕获的错误:", error);
       throw new MetadataWriteError(
         filePath, 
         error instanceof Error ? error : new Error(String(error))
@@ -366,15 +344,12 @@ export class MetadataWriterService {
   }
 
   /**
-   * 安全地终止ExifTool进程
-   * 应在应用关闭前调用以释放资源
+   * 关闭ExifTool进程并释放资源
    */
   async end(): Promise<void> {
     try {
       await this.exiftool.end();
-      console.log('ExifTool process terminated successfully.'); // 临时日志
     } catch (error) {
-      console.error('Error terminating ExifTool process:', error);
       // 因为是在关闭流程中，所以不需要向上抛出错误
     }
   }

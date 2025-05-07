@@ -38,7 +38,7 @@ async function createTestImageFile(tempDir: string, format: ImageFormat): Promis
   } else {
     // 否则创建一个空文件 (注意: 这不是有效的图片文件,只用于mock测试)
     fs.writeFileSync(filePath, Buffer.from(''));
-    console.warn(`⚠️ 警告: 没有找到${format.toUpperCase()}测试图片样例,使用空文件(仅用于mock测试)`);
+    // console.warn(`⚠️ 警告: 没有找到${format.toUpperCase()}测试图片样例,使用空文件(仅用于mock测试)`);
   }
   
   return filePath;

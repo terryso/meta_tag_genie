@@ -53,7 +53,7 @@ if (searchType && !searchTerm.includes('kMDItem')) {
       searchTerm = `kMDItemTextContent == '*${searchTerm}*'`;
       break;
     default:
-      console.warn(`未知的搜索类型: ${searchType}, 将搜索关键词作为标签`);
+      // console.warn(`未知的搜索类型: ${searchType}, 将搜索关键词作为标签`);
       searchTerm = `kMDItemKeywords == '${searchTerm}'`;
   }
 }

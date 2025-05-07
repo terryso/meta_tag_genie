@@ -45,7 +45,7 @@ const waitForExit = async (
     
     // 设置超时
     const timeout = setTimeout(() => {
-      console.warn(`进程退出等待超时(${timeoutMs}ms)，强制终止`);
+      // console.warn(`进程退出等待超时(${timeoutMs}ms)，强制终止`);
       childProcess.kill('SIGKILL');
       resolve({ code: null, stdout, stderr });
     }, timeoutMs);
@@ -59,7 +59,7 @@ const waitForExit = async (
 
 // 启动MCP服务子进程的辅助函数
 const startServiceProcess = (): ChildProcess => {
-  console.log(`启动服务: ${NODE_BINARY} ${SERVICE_PATH}`);
+  // console.log(`启动服务: ${NODE_BINARY} ${SERVICE_PATH}`);
   
   // 使用spawn启动子进程并保持stdin/stdout/stderr管道开放
   const childProcess = spawn(NODE_BINARY, [SERVICE_PATH], {
@@ -68,11 +68,11 @@ const startServiceProcess = (): ChildProcess => {
   });
   
   childProcess.stderr?.on('data', (data) => {
-    console.log(`[服务stderr] ${data.toString().trim()}`);
+    // console.log(`[服务stderr] ${data.toString().trim()}`);
   });
   
   childProcess.stdout?.on('data', (data) => {
-    console.log(`[服务stdout] ${data.toString().trim()}`);
+    // console.log(`[服务stdout] ${data.toString().trim()}`);
   });
   
   return childProcess;
@@ -95,7 +95,7 @@ describe('MCP服务生命周期和健壮性测试', () => {
       try {
         serviceProcess.kill('SIGKILL');
       } catch (error) {
-        console.warn('清理测试进程时发生错误:', error);
+        // console.warn('清理测试进程时发生错误:', error);
       }
     }
     serviceProcess = null;
@@ -134,7 +134,7 @@ describe('MCP服务生命周期和健壮性测试', () => {
     
     // 组合stdout和stderr进行检查，因为日志可能输出到任一流
     const allLogs = stdout + stderr;
-    console.log('进程输出日志:', allLogs);
+    // console.log('进程输出日志:', allLogs);
     
     // 检查是否包含关键日志信息 - 使用更灵活的检查以适应不同的日志输出格式
     const containsShutdownSignal = 
