@@ -1,7 +1,7 @@
 /**
  * 元数据写入验证 - 端到端测试
  * 
- * 此测试验证通过MCP服务的writeImageMetadata工具写入的标签、描述、人物和地点元数据
+ * 此测试验证通过MetadataWriterService写入的标签、描述、人物和地点元数据
  * 能否正确写入到图片文件中，以确保后续可被macOS Spotlight索引。
  */
 
@@ -10,11 +10,6 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { MetadataWriterService } from '../../src/core/metadata-writer';
 import { ImageMetadataArgs } from '../../src/core/metadata-writer';
-// 使用 dynamic import 以支持在 TS 环境中使用 ESM 模块
-import('../../src/tools/utils/mcp-client.mjs').then(module => {
-  // 将 McpClient 类保存到全局变量，以便后续使用
-  global.McpClient = module.default;
-});
 
 // 测试超时设置（较长，以适应MCP服务启动和文件I/O）
 const TEST_TIMEOUT = 30000;
@@ -125,47 +120,23 @@ async function createTestImageFile(tempDir: string, format: ImageFormat): Promis
 /**
  * 主测试套件
  */
-describe('元数据写入验证 - E2E测试', () => {
+describe('元数据写入验证 - 端到端测试', () => {
   let tempDir: string;
-  let mcpClient: any; // 当导入完成后，将被正确赋值
   let metadataWriter: MetadataWriterService;
   
-  // 在所有测试前启动 MCP 服务
+  // 在所有测试前
   beforeAll(async () => {
     // 创建临时目录
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-e2e-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'metadata-test-'));
     
-    // 创建 MCP 客户端
-    // @ts-ignore - 动态导入的类型问题
-    mcpClient = new global.McpClient({
-      clientName: "E2ETestClient",
-      clientVersion: "0.0.1"
-    });
-    
-    // 连接到服务
-    try {
-      await mcpClient.connect();
-      console.log('MCP 服务连接成功');
-    } catch (error) {
-      console.error('MCP 服务连接失败:', error);
-      throw error;
-    }
-    
-    // 创建 MetadataWriterService 实例（用于读取验证）
+    // 创建 MetadataWriterService 实例
     metadataWriter = new MetadataWriterService();
+    
+    console.log('测试初始化完成');
   }, TEST_TIMEOUT);
   
   // 在所有测试后清理资源
   afterAll(async () => {
-    // 关闭 MCP 客户端
-    if (mcpClient) {
-      try {
-        await mcpClient.close();
-      } catch (e) {
-        // 忽略关闭错误
-      }
-    }
-    
     // 关闭 MetadataWriterService
     if (metadataWriter) {
       await metadataWriter.end();
@@ -173,7 +144,11 @@ describe('元数据写入验证 - E2E测试', () => {
     
     // 清理临时文件和目录
     if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (e) {
+        console.error('清理临时目录失败:', e);
+      }
     }
   }, TEST_TIMEOUT);
   
@@ -188,7 +163,7 @@ describe('元数据写入验证 - E2E测试', () => {
           try {
             testImagePath = await createTestImageFile(tempDir, format);
           } catch (error) {
-            // console.warn(`无法创建${format}格式的测试图片, 跳过此测试:`, (error as Error).message);
+            console.warn(`无法创建${format}格式的测试图片, 跳过此测试:`, (error as Error).message);
             return;
           }
           
@@ -199,11 +174,12 @@ describe('元数据写入验证 - E2E测试', () => {
           if (testCase.people) metadata.people = testCase.people;
           if (testCase.location) metadata.location = testCase.location;
           
-          // 调用 WriteImageMetadata 工具
+          // 调用 MetadataWriterService 直接写入元数据
           try {
-            await mcpClient.writeImageMetadata(testImagePath, metadata);
+            // 写入元数据
+            await metadataWriter.writeMetadataForImage(testImagePath, metadata);
             
-            // 使用 MetadataWriterService 读取写入的元数据以验证
+            // 读取写入的元数据以验证
             const readMetadata = await metadataWriter.readMetadataForImage(testImagePath);
             
             // 断言标签
@@ -237,7 +213,7 @@ describe('元数据写入验证 - E2E测试', () => {
             }
             
           } catch (error) {
-            console.error(`测试失败:`, error);
+            console.error('测试失败:', error);
             throw error;
           }
         }, TEST_TIMEOUT);

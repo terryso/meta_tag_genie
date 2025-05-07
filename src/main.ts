@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * MetaTag Genie - 主入口文件
  *
@@ -11,6 +12,12 @@ import { MetadataWriterService } from './core/metadata-writer'; // 我们在 Sto
 import { initializeGracefulShutdown } from './common/graceful-shutdown'; // 一个新的辅助函数
 import { writeImageMetadataHandler } from './mcp/tools/writeImageMetadata'; // 导入Tool处理函数
 import { JsonRpcError } from './common/errors'; // 导入自定义JSON-RPC错误类
+
+// 处理命令行参数
+if (process.argv.includes('--version') || process.argv.includes('-v')) {
+  console.log('MetaTag Genie v0.1.0');
+  process.exit(0);
+}
 
 console.log('MetaTag Genie 服务正在启动...');
 

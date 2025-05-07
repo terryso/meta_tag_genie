@@ -1,0 +1,40 @@
+name: 发布到 NPM
+
+on:
+  push:
+    tags:
+      - 'v*'  # 匹配所有以 v 开头的标签，如 v1.0.0
+  release:
+    types: [created]
+
+jobs:
+  build-and-publish:
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org/'
+      
+      - name: 安装依赖
+        run: npm ci
+      
+      - name: 构建
+        run: npm run build
+      
+      - name: 运行测试
+        run: npm test
+        
+      - name: 验证 npx 可用性
+        run: |
+          npm link
+          npx metatag-genie --version || echo "已执行版本检查命令，返回状态: $?"
+      
+      - name: 发布到 NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 

@@ -24,6 +24,29 @@ MetaTag Genie 是一个 macOS Stdio MCP 服务，专为写入图片元数据以�
 
 ## 安装
 
+### 通过NPM安装（推荐）
+
+```bash
+# 全局安装
+npm install -g metatag-genie
+```
+
+使用全局安装后，可以通过以下命令直接运行：
+
+```bash
+metatag-genie
+```
+
+或者，您可以不安装直接使用npx运行：
+
+```bash
+npx metatag-genie
+```
+
+这种方式不需要全局安装，也是AI代理等客户端调用的推荐方式。
+
+### 通过源码安装
+
 ```bash
 # 1. 克隆仓库
 git clone <repository-url>
@@ -36,21 +59,50 @@ npm install
 # 3. 编译 TypeScript 代码
 npm run build
 # 或者: yarn build
+
+# 4. 本地链接（可选，用于测试npx和命令行调用）
+npm link
 ```
 
 ## 运行服务
 
-### 直接运行（用于测试或开发）
+### 通过NPX运行（推荐）
+
+安装包后，可以直接通过npx运行：
 
 ```bash
-node dist/main.js
+npx metatag-genie
 ```
 
-服务启动后会监听标准输入输出（Stdio），等待 MCP 客户端连接并发送 JSON-RPC 消息。
+这种方式不需要全局安装包，适合作为AI代理或其他客户端的调用方式。
 
-### 与 MCP 客户端集成
+### 开发模式
 
-AI 代理（如 Cursor）或其他客户端通常需要在其配置中指定上述命令的完整路径，例如：`/usr/local/bin/node /path/to/metatag-genie/dist/main.js`。
+开发过程中，可以直接使用TypeScript源码运行服务：
+
+```bash
+npm run start:dev
+```
+
+此命令使用`ts-node`直接运行TypeScript代码，无需预先编译，适合快速开发和调试。
+
+### 生产模式
+
+构建后，可以通过以下命令运行编译好的JavaScript代码：
+
+```bash
+npm start
+# 或者直接: node dist/main.js
+```
+
+服务启动后会监听标准输入输出（Stdio），等待MCP客户端连接并发送JSON-RPC消息。
+
+### 与MCP客户端集成
+
+AI代理（如Cursor）或其他客户端需要在其配置中指定命令的完整路径：
+
+- 基于Node.js：`/usr/local/bin/node /path/to/metatag-genie/dist/main.js`
+- 使用npx：`/usr/local/bin/npx metatag-genie`
 
 注意：本服务不监听网络端口，仅通过标准输入输出通信。
 
@@ -156,6 +208,19 @@ npm run format
 
 如需报告 Bug 或提出功能建议，请在项目的 Issue Tracker 中创建新的 Issue，并提供尽可能详细的信息。
 
+### 持续集成与自动发布
+
+本项目使用GitHub Actions进行持续集成和自动发布：
+
+- 每次Push和PR会自动运行测试和构建
+- 创建Release后会自动发布到NPM
+
+提交PR时请确保通过所有CI检查。如需发布新版本：
+
+1. 更新`package.json`中的版本号
+2. 创建一个新的GitHub Release
+3. GitHub Actions会自动将包发布到NPM
+
 ## 文档链接
 
 - [架构文档](./docs/architecture.md)
@@ -169,4 +234,4 @@ npm run format
 
 ## 许可证
 
-MIT License 
+本项目采用 MIT 许可证。详情请参阅项目根目录下的 LICENSE 文件。 
