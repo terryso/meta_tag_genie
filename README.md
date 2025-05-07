@@ -31,6 +31,14 @@ MetaTag Genie 是一个 macOS Stdio MCP 服务，专为写入图片元数据以�
 
 ## 安装
 
+### 安装 Smithery
+
+要自动将 MetaTag Genie 安装到 Claude Desktop，请使用 [Smithery](https://smithery.ai/server/@terryso/meta_tag_genie)：
+
+```bash
+npx -y @smithery/cli install @terryso/metatag_genie --client claude
+```
+
 ### 通过NPM安装（推荐）
 
 ```bash
