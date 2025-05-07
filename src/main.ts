@@ -10,6 +10,7 @@ import { z } from 'zod'; // 用于定义 Tool Schema
 import { MetadataWriterService } from './core/metadata-writer'; // 我们在 Story 1.2 创建的服务
 import { initializeGracefulShutdown } from './common/graceful-shutdown'; // 一个新的辅助函数
 import { writeImageMetadataHandler } from './mcp/tools/writeImageMetadata'; // 导入Tool处理函数
+import { JsonRpcError } from './common/errors'; // 导入自定义JSON-RPC错误类
 
 console.log('MetaTag Genie 服务正在启动...');
 
@@ -56,16 +57,36 @@ server.tool(
   'Writes metadata (tags, description, people, location) to an image file.', // 工具描述
   writeImageMetadataParams, // 参数 schema
   async (params, _extra) => {
-    // 在调用处理函数时传入参数和上下文
-    const result = await writeImageMetadataHandler(params, { app: appContext });
-    
-    // 返回完整的结果作为JSON字符串
-    return {
-      content: [{ 
-        type: 'text', 
-        text: JSON.stringify(result)
-      }]
-    };
+    try {
+      // 在调用处理函数时传入参数和上下文
+      const result = await writeImageMetadataHandler(params, { app: appContext });
+      
+      // 返回完整的结果作为JSON字符串
+      return {
+        content: [{ 
+          type: 'text', 
+          text: JSON.stringify(result)
+        }]
+      };
+    } catch (error) {
+      // 处理JsonRpcError，将其转换为正确的响应格式
+      if (error instanceof JsonRpcError) {
+        // 使用SDK的错误处理机制传递自定义错误
+        throw {
+          code: error.code,
+          message: error.message,
+          data: error.data
+        };
+      }
+      
+      // 对于其他未处理的错误，返回通用内部错误
+      console.error('Tool执行时发生未捕获错误:', error);
+      throw {
+        code: -32603, // JSON-RPC标准内部错误码
+        message: '内部服务器错误',
+        data: { errorMessage: error instanceof Error ? error.message : String(error) }
+      };
+    }
   }
 );
 

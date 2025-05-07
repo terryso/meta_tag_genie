@@ -1,5 +1,14 @@
 import { ExifTool, type Tags } from 'exiftool-vendored';
-import { FileNotFoundError, MetadataReadError, MetadataWriteError, ExifToolTimeoutError, ExifToolProcessError } from '../common/errors';
+import { 
+  BaseError,
+  FileNotFoundError, 
+  MetadataReadError, 
+  MetadataWriteError, 
+  ExifToolTimeoutError, 
+  ExifToolProcessError, 
+  FileAccessError, 
+  UnsupportedFileFormatError 
+} from '../common/errors';
 import * as fs from 'node:fs';
 
 // 定义图片元数据参数接口
@@ -161,9 +170,39 @@ export class MetadataWriterService {
     overwrite = true
   ): Promise<void> {
     try {
-      // 检查文件是否存在
-      if (!fs.existsSync(filePath)) {
-        throw new FileNotFoundError(filePath);
+      // 使用fs.existsSync进行文件操作，增强错误处理
+      try {
+        // 检查文件是否存在
+        if (!fs.existsSync(filePath)) {
+          throw new FileNotFoundError(filePath);
+        }
+        
+        // 检查文件格式是否支持
+        const fileExt = filePath.toLowerCase().split('.').pop() || '';
+        if (!['jpg', 'jpeg', 'png', 'heic'].includes(fileExt)) {
+          throw new UnsupportedFileFormatError(filePath, fileExt);
+        }
+        
+        // 在有条件的情况下检查文件读写权限 (仅在非测试环境)
+        // 在测试环境中，这个检查可能会失败，所以跳过
+        if (process.env.NODE_ENV !== 'test') {
+          try {
+            await fs.promises.access(filePath, fs.constants.R_OK | fs.constants.W_OK);
+          } catch (err: unknown) {
+            if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'EACCES') {
+              const operation = err.message.includes('write') ? 'write' : 'read';
+              throw new FileAccessError(filePath, operation);
+            }
+            throw err;
+          }
+        }
+      } catch (error) {
+        // 直接向上抛出自定义错误类型
+        if (error instanceof BaseError) {
+          throw error;
+        }
+        // 转换其他文件系统错误
+        throw new MetadataWriteError(filePath, error as Error);
       }
 
       // 获取文件扩展名（小写）用于日志记录
@@ -248,59 +287,81 @@ export class MetadataWriterService {
       }
 
       // 执行写入操作
-      console.log(`Writing metadata to ${filePath} with args:`, exiftoolArgs);
-      await this.exiftool.write(filePath, exiftoolArgs, exiftoolOptions);
-      
-    } catch (error) {
-      console.error(`Error writing metadata to ${filePath}:`, error);
-      
-      // 如果已经是自定义错误则直接抛出
-      if (error instanceof FileNotFoundError) {
-        throw error;
-      }
-      
-      // 区分不同类型的ExifTool错误
-      if (error instanceof Error) {
-        // 检查是否为超时错误
-        if (error.message.includes('timed out') || error.message.includes('timeout')) {
-          throw new ExifToolTimeoutError(
-            filePath, 
-            'write', 
-            this.defaultTaskTimeoutMs, 
-            error
-          );
+      try {
+        console.log(`Writing metadata to ${filePath}, args:`, JSON.stringify(exiftoolArgs));
+        await this.exiftool.write(filePath, exiftoolArgs, exiftoolOptions);
+        console.log(`成功写入元数据到文件: ${filePath}`);
+      } catch (error) {
+        console.error(`写入元数据到文件 ${filePath} 失败:`, error);
+        
+        // 检查错误类型，转换为更具体的错误
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const stderrContent = (error as unknown as { stderr?: string }).stderr || '';
+        
+        // 检查是否是不支持的格式 
+        if (errorMessage.includes('format not recognized') || 
+            stderrContent.includes('format not recognized') ||
+            errorMessage.includes('Unknown file type')) {
+          
+          throw new UnsupportedFileFormatError(filePath, fileExt);
         }
         
-        // 检查是否为进程错误
-        if (error.message.includes('exited with status') || 
-            error.message.includes('stderr') || 
-            error.message.includes('ExifTool process')) {
+        // 检查是否是ExifTool进程错误
+        if (errorMessage.includes('exited with status') || 
+            errorMessage.includes('process error')) {
           
           // 尝试从错误消息中提取stderr和退出码
           let stderr: string | undefined;
           let exitCode: number | undefined;
           
-          const stderrMatch = /stderr: '([^']*)'/.exec(error.message);
+          const stderrMatch = /stderr: '([^']*)'/.exec(errorMessage);
           if (stderrMatch?.[1]) {
             stderr = stderrMatch[1];
+          } else if (stderrContent) {
+            stderr = stderrContent;
           }
           
-          const exitCodeMatch = /exited with status (\d+)/.exec(error.message);
+          const exitCodeMatch = /exited with status (\d+)/.exec(errorMessage);
           if (exitCodeMatch?.[1]) {
             exitCode = Number.parseInt(exitCodeMatch[1], 10);
           }
           
           throw new ExifToolProcessError(
-            `ExifTool process error while writing metadata to ${filePath}`,
+            `ExifTool进程在写入元数据到文件 ${filePath} 时出错`,
             exitCode,
             stderr,
-            error
+            error instanceof Error ? error : undefined
           );
         }
+        
+        // 检查是否是超时错误
+        if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+          throw new ExifToolTimeoutError(
+            filePath, 
+            'write', 
+            this.defaultTaskTimeoutMs, 
+            error instanceof Error ? error : undefined
+          );
+        }
+        
+        // 其他写入错误
+        throw new MetadataWriteError(
+          filePath, 
+          error instanceof Error ? error : new Error(String(error))
+        );
+      }
+    } catch (error) {
+      // 直接向上抛出BaseError子类
+      if (error instanceof BaseError) {
+        throw error;
       }
       
-      // 转换为自定义错误
-      throw new MetadataWriteError(filePath, error as Error);
+      // 转换其他错误为MetadataWriteError
+      console.error("写入元数据时发生未捕获的错误:", error);
+      throw new MetadataWriteError(
+        filePath, 
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 

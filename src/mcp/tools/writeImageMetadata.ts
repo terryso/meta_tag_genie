@@ -4,8 +4,20 @@
  * 处理写入图片元数据请求的MCP Tool
  */
 
-import { ERROR_CODES } from '../../common/errors';
+import { 
+  ERROR_CODES, 
+  JsonRpcError,
+  FileNotFoundError,
+  FileAccessError,
+  UnsupportedFileFormatError,
+  MetadataWriteError,
+  ExifToolTimeoutError,
+  ExifToolProcessError,
+  InvalidMetadataFormatError,
+  RelativePathError
+} from '../../common/errors';
 import type { ImageMetadataArgs, MetadataWriterService } from '../../core/metadata-writer';
+import * as path from 'node:path';
 
 // 输入参数类型定义
 export interface WriteImageMetadataParams {
@@ -14,19 +26,21 @@ export interface WriteImageMetadataParams {
   overwrite: boolean;
 }
 
-// 错误数据接口
-export interface ErrorData {
-  filePath: string;
-  [key: string]: unknown;
-}
-
-// 成功响应类型定义
+// 输出结果类型定义
 export interface WriteImageMetadataResult {
   success: boolean;
   filePath: string;
   message: string;
-  errorCode?: number;
-  errorData?: ErrorData;
+}
+
+/**
+ * 检查路径是否为相对路径
+ * @param filePath 文件路径
+ * @returns boolean 是否为相对路径
+ */
+function isRelativePath(filePath: string): boolean {
+  // 检查路径是否为绝对路径
+  return !path.isAbsolute(filePath);
 }
 
 /**
@@ -39,7 +53,15 @@ export async function writeImageMetadataHandler(
   context: { app: { metadataWriter: MetadataWriterService } }
 ): Promise<WriteImageMetadataResult> {
   try {
-    console.log('Processing writeImageMetadata request for file:', params.filePath);
+    console.log('处理writeImageMetadata请求，文件:', params.filePath);
+    
+    // 检查是否为相对路径
+    if (isRelativePath(params.filePath)) {
+      throw new RelativePathError(params.filePath);
+    }
+    
+    // 检查参数有效性（额外业务逻辑校验）
+    validateMetadataParams(params);
     
     // 从上下文中获取MetadataWriterService实例
     const { metadataWriter } = context.app;
@@ -54,15 +76,15 @@ export async function writeImageMetadataHandler(
     // 获取文件扩展名（小写）
     const fileExt = params.filePath.toLowerCase().split('.').pop() || '';
     // 根据文件扩展名构建适当的成功消息
-    let successMessage = 'Metadata successfully written to image.';
+    let successMessage = '元数据已成功写入图片。';
     
     // 针对特定文件类型自定义消息
     if (fileExt === 'jpg' || fileExt === 'jpeg') {
-      successMessage = 'Metadata successfully written to JPG image.';
+      successMessage = '元数据已成功写入JPG图片。';
     } else if (fileExt === 'png') {
-      successMessage = 'Metadata successfully written to PNG image.';
+      successMessage = '元数据已成功写入PNG图片。';
     } else if (fileExt === 'heic') {
-      successMessage = 'Metadata successfully written to HEIC image.';
+      successMessage = '元数据已成功写入HEIC图片。';
     }
     
     // 返回成功响应
@@ -72,51 +94,132 @@ export async function writeImageMetadataHandler(
       message: successMessage,
     };
   } catch (error) {
-    console.error('Error in writeImageMetadata tool handler:', error);
+    console.error('writeImageMetadata工具处理器出错:', error);
     
-    // 根据错误类型返回适当的错误结果对象
-    if (error instanceof Error) {
-      // 检查是否是FileNotFoundError
-      if (error.name === 'FileNotFoundError') {
-        return {
-          success: false,
-          filePath: params.filePath,
-          message: `文件不存在: ${params.filePath}`,
-          errorCode: ERROR_CODES.FILE_NOT_FOUND,
-          errorData: { filePath: params.filePath }
-        };
-      }
-      
-      // 检查是否是MetadataWriteError
-      if (error.name === 'MetadataWriteError') {
-        return {
-          success: false,
-          filePath: params.filePath,
-          message: `写入元数据失败: ${error.message}`,
-          errorCode: ERROR_CODES.METADATA_WRITE_FAILED,
-          errorData: { filePath: params.filePath }
-        };
-      }
-      
-      // 检查错误消息是否包含'file not found'
-      if (error.message?.toLowerCase().includes('file not found')) {
-        return {
-          success: false,
-          filePath: params.filePath,
-          message: `ExifTool未找到文件: ${params.filePath}`,
-          errorCode: ERROR_CODES.FILE_NOT_FOUND,
-          errorData: { filePath: params.filePath }
-        };
-      }
+    // 如果已经是JsonRpcError类型，直接向上抛出
+    if (error instanceof JsonRpcError) {
+      throw error;
     }
     
-    // 通用内部错误
-    return {
-      success: false,
-      filePath: params.filePath,
-      message: `处理文件时发生内部错误: ${error instanceof Error ? error.message : String(error)}`,
-      errorCode: ERROR_CODES.INTERNAL_ERROR,
-      errorData: { filePath: params.filePath }
-    };
+    // 将捕获的错误映射到适当的JsonRpcError
+    if (error instanceof FileNotFoundError) {
+      throw new JsonRpcError(
+        ERROR_CODES.FILE_NOT_FOUND, 
+        error.message, 
+        { filePath: error.filePath }
+      );
+    }
+    if (error instanceof FileAccessError) {
+      const code = error.operation === 'write' 
+        ? ERROR_CODES.FILE_NOT_WRITABLE 
+        : ERROR_CODES.FILE_NOT_READABLE;
+      throw new JsonRpcError(
+        code, 
+        error.message, 
+        { filePath: error.filePath, operation: error.operation }
+      );
+    }
+    if (error instanceof UnsupportedFileFormatError) {
+      throw new JsonRpcError(
+        ERROR_CODES.UNSUPPORTED_FILE_FORMAT, 
+        error.message, 
+        { filePath: error.filePath, format: error.format }
+      );
+    }
+    if (error instanceof RelativePathError) {
+      throw new JsonRpcError(
+        ERROR_CODES.RELATIVE_PATH_NOT_ALLOWED,
+        error.message,
+        { filePath: error.filePath }
+      );
+    }
+    if (error instanceof ExifToolTimeoutError) {
+      throw new JsonRpcError(
+        ERROR_CODES.EXIFTOOL_TIMEOUT, 
+        error.message, 
+        { 
+          filePath: error.filePath,
+          operation: error.operation,
+          timeoutMs: error.timeoutMs
+        }
+      );
+    }
+    if (error instanceof ExifToolProcessError) {
+      throw new JsonRpcError(
+        ERROR_CODES.EXIFTOOL_PROCESS_ERROR, 
+        error.message, 
+        { 
+          exitCode: error.exitCode,
+          stderr: error.stderr 
+        }
+      );
+    }
+    if (error instanceof MetadataWriteError) {
+      throw new JsonRpcError(
+        ERROR_CODES.METADATA_WRITE_FAILED, 
+        error.message, 
+        { filePath: error.filePath }
+      );
+    }
+    if (error instanceof InvalidMetadataFormatError) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        error.message
+      );
+    }
+    
+    // 其他未知错误转换为通用内部错误
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new JsonRpcError(
+      ERROR_CODES.JSON_RPC_INTERNAL_ERROR, 
+      `写入元数据时发生内部错误: ${errorMessage}`
+    );
+  }
+}
+
+/**
+ * 验证元数据参数的额外业务逻辑
+ */
+function validateMetadataParams(params: WriteImageMetadataParams): void {
+  // 检查标签数组中是否有空字符串
+  if (params.metadata?.tags?.some(tag => tag.trim() === '')) {
+    throw new JsonRpcError(
+      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+      '标签不能为空字符串', 
+      { invalidTags: params.metadata.tags.filter(tag => tag.trim() === '') }
+    );
+  }
+  
+  // 检查人物数组中是否有空字符串
+  if (params.metadata?.people?.some(person => person.trim() === '')) {
+    throw new JsonRpcError(
+      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+      '人物名称不能为空字符串', 
+      { invalidPeople: params.metadata.people.filter(person => person.trim() === '') }
+    );
+  }
+  
+  // 检查描述长度是否过长
+  if (params.metadata?.description && params.metadata.description.length > 10000) {
+    throw new JsonRpcError(
+      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+      '描述文本过长，最大允许10000个字符', 
+      { 
+        descriptionLength: params.metadata.description.length,
+        maxLength: 10000 
+      }
+    );
+  }
+  
+  // 检查地点文本长度是否过长
+  if (params.metadata?.location && params.metadata.location.length > 1000) {
+    throw new JsonRpcError(
+      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+      '地点文本过长，最大允许1000个字符', 
+      { 
+        locationLength: params.metadata.location.length,
+        maxLength: 1000 
+      }
+    );
   }
 } 
