@@ -1,4 +1,5 @@
-import type { McpServer, StdioServerTransport } from '@modelcontextprotocol/sdk/server';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { MetadataWriterService } from '../core/metadata-writer';
 
 // 关闭操作的最大超时时间(毫秒)
@@ -62,14 +63,14 @@ export function initializeGracefulShutdown(
     let exitCode = 0;
     
     try {
-      // 1. 尝试断开 MCP 服务器连接
-      console.log('正在断开 MCP 服务器连接...');
+      // 1. 尝试关闭 MCP 服务器
+      console.log('正在关闭 MCP 服务器...');
       await executeWithTimeout(
-        async () => server.disconnect(),
+        async () => server.close(),
         SHUTDOWN_TIMEOUT_MS,
-        'MCP Server disconnect'
+        'MCP Server close'
       );
-      console.log('MCP 服务器已断开连接。');
+      console.log('MCP 服务器已关闭。');
 
       // 2. 关闭 ExifTool 进程
       console.log('正在释放 MetadataWriterService 资源...');

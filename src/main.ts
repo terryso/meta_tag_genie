@@ -75,7 +75,6 @@ async function main() {
   const transport = new StdioServerTransport();
 
   // 设置优雅关闭，传入 server 和 metadataWriter 实例
-  // @ts-expect-error - SDK 类型可能不匹配，但我们知道这些方法存在
   initializeGracefulShutdown(server, metadataWriter, transport);
 
   try {

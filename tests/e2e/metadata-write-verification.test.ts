@@ -1,7 +1,7 @@
 /**
  * 元数据写入验证 - 端到端测试
  * 
- * 此测试验证通过MCP服务的writeImageMetadata工具写入的标签和描述元数据
+ * 此测试验证通过MCP服务的writeImageMetadata工具写入的标签、描述、人物和地点元数据
  * 能否正确写入到图片文件中，以确保后续可被macOS Spotlight索引。
  */
 
@@ -24,6 +24,8 @@ interface TestCase {
   name: string;
   tags?: string[];
   description?: string;
+  people?: string[];
+  location?: string;
 }
 
 // 测试用例组
@@ -50,6 +52,53 @@ const TEST_CASES: TestCase[] = [
   {
     name: '仅描述',
     description: 'This image has description but no tags.'
+  },
+  // 新增: 人物测试用例
+  {
+    name: '单个人物',
+    people: ['Alice Wonderland']
+  },
+  {
+    name: '多个人物',
+    people: ['Bob The Builder', 'Charles Xavier']
+  },
+  {
+    name: '包含特殊字符的人物名',
+    people: ['Dr. Strange (Stephen)']
+  },
+  {
+    name: '中文人物名',
+    people: ['孙悟空', '猪八戒']
+  },
+  // 新增: 地点测试用例
+  {
+    name: '简单地点',
+    location: 'London, UK'
+  },
+  {
+    name: '更具体的地点',
+    location: 'Eiffel Tower, Paris, France'
+  },
+  {
+    name: '包含特殊字符的地点',
+    location: 'Baker Street 221B & The Pub Nearby'
+  },
+  {
+    name: '中文地点',
+    location: '中国北京故宫博物院'
+  },
+  // 新增: 组合测试用例
+  {
+    name: '人物和地点',
+    people: ['Tony Stark', 'Peter Parker'],
+    location: 'Stark Tower, New York'
+  },
+  {
+    name: '所有元数据类型',
+    tags: ['Holiday', 'Friends'],
+    description: 'A wonderful day with friends',
+    people: ['Bruce Wayne', 'Clark Kent'],
+    location: 'Gotham City Central Park'
   }
 ];
 
@@ -229,6 +278,8 @@ describe('元数据写入验证 - E2E测试', () => {
           const metadata: Partial<ImageMetadataArgs> = {};
           if (testCase.tags) metadata.tags = testCase.tags;
           if (testCase.description) metadata.description = testCase.description;
+          if (testCase.people) metadata.people = testCase.people;
+          if (testCase.location) metadata.location = testCase.location;
           
           // 调用WriteImageMetadata工具
           try {
@@ -255,11 +306,27 @@ describe('元数据写入验证 - E2E测试', () => {
             
             // 断言描述
             if (testCase.description) {
+              expect(readMetadata.description).toBeDefined();
               expect(readMetadata.description).toBe(testCase.description);
             }
             
+            // 断言人物（作为关键词）
+            if (testCase.people) {
+              expect(readMetadata.tags).toBeDefined();
+              // 由于人物被保存为标签/关键词，我们检查所有的人物名称是否都存在于标签中
+              for (const person of testCase.people) {
+                expect(readMetadata.tags).toContain(person);
+              }
+            }
+            
+            // 断言地点
+            if (testCase.location) {
+              expect(readMetadata.location).toBeDefined();
+              expect(readMetadata.location).toBe(testCase.location);
+            }
+            
           } catch (error) {
-            console.error(`测试"${testCase.name}"失败:`, error);
+            console.error(`测试失败:`, error);
             throw error;
           }
         }, TEST_TIMEOUT);
