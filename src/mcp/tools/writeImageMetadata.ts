@@ -177,45 +177,109 @@ export async function writeImageMetadataHandler(
  * 验证元数据参数的额外业务逻辑
  */
 function validateMetadataParams(params: WriteImageMetadataParams): void {
-  // 检查标签数组中是否有空字符串
-  if (params.metadata?.tags?.some(tag => tag.trim() === '')) {
-    throw new JsonRpcError(
-      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-      '标签不能为空字符串', 
-      { invalidTags: params.metadata.tags.filter(tag => tag.trim() === '') }
-    );
+  // 常量定义
+  const MAX_DESCRIPTION_LENGTH = 10000;
+  const MAX_LOCATION_LENGTH = 1000;
+  const MAX_TAG_LENGTH = 100;
+  const MAX_PERSON_NAME_LENGTH = 100;
+  const MAX_TAGS_COUNT = 50;
+  const MAX_PEOPLE_COUNT = 50;
+
+  // 检查标签数组中是否有空字符串或过长的标签
+  if (params.metadata?.tags) {
+    // 检查标签数量是否过多
+    if (params.metadata.tags.length > MAX_TAGS_COUNT) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `标签数量过多，最多允许${MAX_TAGS_COUNT}个标签`, 
+        { tagsCount: params.metadata.tags.length, maxCount: MAX_TAGS_COUNT }
+      );
+    }
+    
+    // 检查每个标签
+    const invalidTags = params.metadata.tags.filter(tag => tag.trim() === '');
+    if (invalidTags.length > 0) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        '标签不能为空字符串', 
+        { invalidTags }
+      );
+    }
+    
+    // 检查标签长度
+    const longTags = params.metadata.tags.filter(tag => tag.length > MAX_TAG_LENGTH);
+    if (longTags.length > 0) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `标签长度不能超过${MAX_TAG_LENGTH}个字符`, 
+        { 
+          longTags: longTags.map(tag => ({ tag, length: tag.length })),
+          maxLength: MAX_TAG_LENGTH 
+        }
+      );
+    }
   }
   
-  // 检查人物数组中是否有空字符串
-  if (params.metadata?.people?.some(person => person.trim() === '')) {
-    throw new JsonRpcError(
-      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-      '人物名称不能为空字符串', 
-      { invalidPeople: params.metadata.people.filter(person => person.trim() === '') }
-    );
+  // 检查人物数组中是否有空字符串或过长的名称
+  if (params.metadata?.people) {
+    // 检查人物数量是否过多
+    if (params.metadata.people.length > MAX_PEOPLE_COUNT) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `人物数量过多，最多允许${MAX_PEOPLE_COUNT}个人物`, 
+        { peopleCount: params.metadata.people.length, maxCount: MAX_PEOPLE_COUNT }
+      );
+    }
+    
+    // 检查每个人物名称
+    const invalidPeople = params.metadata.people.filter(person => person.trim() === '');
+    if (invalidPeople.length > 0) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        '人物名称不能为空字符串', 
+        { invalidPeople }
+      );
+    }
+    
+    // 检查人物名称长度
+    const longNames = params.metadata.people.filter(person => person.length > MAX_PERSON_NAME_LENGTH);
+    if (longNames.length > 0) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `人物名称长度不能超过${MAX_PERSON_NAME_LENGTH}个字符`, 
+        { 
+          longNames: longNames.map(name => ({ name, length: name.length })),
+          maxLength: MAX_PERSON_NAME_LENGTH 
+        }
+      );
+    }
   }
   
   // 检查描述长度是否过长
-  if (params.metadata?.description && params.metadata.description.length > 10000) {
-    throw new JsonRpcError(
-      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-      '描述文本过长，最大允许10000个字符', 
-      { 
-        descriptionLength: params.metadata.description.length,
-        maxLength: 10000 
-      }
-    );
+  if (params.metadata?.description) {
+    if (params.metadata.description.length > MAX_DESCRIPTION_LENGTH) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `描述文本过长，最大允许${MAX_DESCRIPTION_LENGTH}个字符`, 
+        { 
+          descriptionLength: params.metadata.description.length,
+          maxLength: MAX_DESCRIPTION_LENGTH 
+        }
+      );
+    }
   }
   
   // 检查地点文本长度是否过长
-  if (params.metadata?.location && params.metadata.location.length > 1000) {
-    throw new JsonRpcError(
-      ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-      '地点文本过长，最大允许1000个字符', 
-      { 
-        locationLength: params.metadata.location.length,
-        maxLength: 1000 
-      }
-    );
+  if (params.metadata?.location) {
+    if (params.metadata.location.length > MAX_LOCATION_LENGTH) {
+      throw new JsonRpcError(
+        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
+        `地点文本过长，最大允许${MAX_LOCATION_LENGTH}个字符`, 
+        { 
+          locationLength: params.metadata.location.length,
+          maxLength: MAX_LOCATION_LENGTH 
+        }
+      );
+    }
   }
 } 

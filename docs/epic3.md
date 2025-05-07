@@ -94,7 +94,7 @@
     - AC5: 相关的单元测试/集成测试覆盖这些错误场景，验证返回的 JSON-RPC 错误对象结构和内容是否正确。
     - AC6: 发生文件操作错误时，原始图片文件未被损坏。
 
-### Story 3.4: 完善 MCP 服务 (Stdio) 的反馈机制与 Tool 定义文档
+### Story 3.4: 完善 MCP 服务 (Stdio) 的反馈机制与 Tool 定义文档 ✅
 - **用户故事 / 目标:** 作为开发者，我需要完善 MCP 服务通过 Stdio 的反馈机制，确保其在操作成功时也能提供清晰的、符合 JSON-RPC 规范的确认信息。 (Tool 定义文档已完成)
 - **详细需求:**
     - **MCP 服务 (Stdio):**
@@ -110,9 +110,7 @@
     - AC2: MCP Tool 的定义文档 (`docs/mcp-tools-definition.md`) 已被创建并确认。 **(已完成)**
     - AC3: 模拟客户端能正确解析成功和错误的 JSON-RPC 响应。
 
-## 新增技术 Stories/Tasks (由架构师识别)
-
-### Story 3.5: `writeImageMetadata` Tool 参数的健壮性校验
+### Story 3.5: `writeImageMetadata` Tool 参数的健壮性校验 ✅
 - **用户故事 / 目标:** 作为开发者，我需要确保 `writeImageMetadata` Tool 的输入参数（特别是 `filePath` 和 `metadata` 对象内部的各个字段）在被传递给核心逻辑之前，经过了全面的格式和有效性校验，并能对无效输入返回清晰的错误。
 - **详细需求:**
     - `@modelcontextprotocol/sdk` 通常与 `zod` 结合使用，允许在 Tool 定义时声明参数的 schema。SDK 会基于此 schema 进行初步校验。

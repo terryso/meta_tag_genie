@@ -11,9 +11,10 @@ import {
   JsonRpcError
 } from '../../../../src/common/errors';
 import type { MetadataWriterService } from '../../../../src/core/metadata-writer';
+import type { ImageMetadataArgs } from '../../../../src/core/metadata-writer';
 
 // 创建模拟的MetadataWriterService
-const mockWriteMetadataForImage = jest.fn();
+const mockWriteMetadataForImage = jest.fn<Promise<void>, [string, ImageMetadataArgs, boolean]>();
 const mockMetadataWriter = {
   writeMetadataForImage: mockWriteMetadataForImage,
   readRawMetadata: jest.fn(),
@@ -29,6 +30,11 @@ const mockContext = {
     metadataWriter: mockMetadataWriter,
   },
 };
+
+// 类型扩展，使测试代码能够访问JsonRpcError的数据类型
+interface ExtendedJsonRpcError extends JsonRpcError {
+  data: Record<string, unknown>; // 使用更精确的类型
+}
 
 // 有效的测试参数
 const validParams: WriteImageMetadataParams = {
@@ -295,7 +301,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(paramsWithEmptyPerson, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       // 验证错误代码和消息
       expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
       expect(jsonRpcError.message).toContain('人物');
@@ -326,7 +332,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(paramsWithLongDesc, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       // 验证错误代码和消息
       expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
       expect(jsonRpcError.message).toContain('描述');
@@ -361,7 +367,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.FILE_NOT_FOUND);
       expect(jsonRpcError.message).toContain('文件未找到');
       expect(jsonRpcError.data).toHaveProperty('filePath', errorFilePath);
@@ -390,7 +396,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.FILE_NOT_WRITABLE);
       expect(jsonRpcError.message).toContain('写入');
       expect(jsonRpcError.data).toHaveProperty('filePath', errorFilePath);
@@ -421,7 +427,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.UNSUPPORTED_FILE_FORMAT);
       expect(jsonRpcError.message).toContain('不支持的文件格式');
       expect(jsonRpcError.data).toHaveProperty('filePath', errorFilePath);
@@ -451,7 +457,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.METADATA_WRITE_FAILED);
       expect(jsonRpcError.message).toContain('写入元数据失败');
       expect(jsonRpcError.data).toHaveProperty('filePath', errorFilePath);
@@ -482,7 +488,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.EXIFTOOL_TIMEOUT);
       expect(jsonRpcError.message).toContain('超时');
       expect(jsonRpcError.data).toHaveProperty('filePath', errorFilePath);
@@ -513,7 +519,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.EXIFTOOL_PROCESS_ERROR);
       expect(jsonRpcError.message).toContain('ExifTool进程错误');
       expect(jsonRpcError.data).toHaveProperty('exitCode', exitCode);
@@ -540,7 +546,7 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.JSON_RPC_INTERNAL_ERROR);
       expect(jsonRpcError.message).toContain('内部服务器错误');
       expect(jsonRpcError.data).toHaveProperty('errorMessage', '未知的内部错误');
@@ -564,10 +570,189 @@ describe('writeImageMetadataHandler', () => {
     try {
       await writeImageMetadataHandler(params, mockContext);
     } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
+      const jsonRpcError = error as any;
       expect(jsonRpcError.code).toBe(ERROR_CODES.RELATIVE_PATH_NOT_ALLOWED);
       expect(jsonRpcError.message).toContain('相对路径');
       expect(jsonRpcError.data).toHaveProperty('filePath', relativeFilePath);
     }
+  });
+
+  /**
+   * 当标签长度超过限制时抛出JsonRpcError
+   */
+  it('当标签长度超过限制时抛出JsonRpcError', async () => {
+    // 生成一个过长的标签 (101字符)
+    const longTag = 'T'.repeat(101);
+    
+    const paramsWithLongTag = {
+      ...validParams,
+      metadata: {
+        ...validParams.metadata,
+        tags: ['ValidTag', longTag, 'AnotherTag']
+      }
+    };
+
+    // 验证抛出错误
+    await expect(async () => {
+      await writeImageMetadataHandler(paramsWithLongTag, mockContext);
+    }).rejects.toThrow(JsonRpcError);
+
+    try {
+      await writeImageMetadataHandler(paramsWithLongTag, mockContext);
+    } catch (error) {
+      const jsonRpcError = error as ExtendedJsonRpcError;
+      // 验证错误代码和消息
+      expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
+      expect(jsonRpcError.message).toContain('标签长度');
+      expect(jsonRpcError.data).toHaveProperty('longTags');
+      expect(jsonRpcError.data).toHaveProperty('maxLength', 100);
+      
+      // 确保错误数据包含长标签信息
+      expect(jsonRpcError.data.longTags).toHaveLength(1);
+      expect(jsonRpcError.data.longTags[0].tag).toBe(longTag);
+      expect(jsonRpcError.data.longTags[0].length).toBe(101);
+    }
+    
+    // 验证元数据服务没有被调用
+    expect(mockWriteMetadataForImage).not.toHaveBeenCalled();
+  });
+  
+  // 参数验证测试：人物名称长度限制
+  it('当人物名称长度超过限制时抛出JsonRpcError', async () => {
+    // 生成一个过长的人物名称 (101字符)
+    const longName = 'P'.repeat(101);
+    
+    const paramsWithLongName = {
+      ...validParams,
+      metadata: {
+        ...validParams.metadata,
+        people: ['ValidPerson', longName, 'AnotherPerson']
+      }
+    };
+
+    // 验证抛出错误
+    await expect(async () => {
+      await writeImageMetadataHandler(paramsWithLongName, mockContext);
+    }).rejects.toThrow(JsonRpcError);
+
+    try {
+      await writeImageMetadataHandler(paramsWithLongName, mockContext);
+    } catch (error) {
+      const jsonRpcError = error as JsonRpcError;
+      // 验证错误代码和消息
+      expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
+      expect(jsonRpcError.message).toContain('人物名称长度');
+      expect(jsonRpcError.data).toHaveProperty('longNames');
+      expect(jsonRpcError.data).toHaveProperty('maxLength', 100);
+      
+      // 确保错误数据包含长名称信息
+      expect(jsonRpcError.data.longNames).toHaveLength(1);
+      expect(jsonRpcError.data.longNames[0].name).toBe(longName);
+      expect(jsonRpcError.data.longNames[0].length).toBe(101);
+    }
+    
+    // 验证元数据服务没有被调用
+    expect(mockWriteMetadataForImage).not.toHaveBeenCalled();
+  });
+  
+  // 参数验证测试：标签数量限制
+  it('当标签数量超过限制时抛出JsonRpcError', async () => {
+    // 生成51个标签
+    const tooManyTags = Array.from({ length: 51 }, (_, i) => `Tag${i + 1}`);
+    
+    const paramsWithTooManyTags = {
+      ...validParams,
+      metadata: {
+        ...validParams.metadata,
+        tags: tooManyTags
+      }
+    };
+
+    // 验证抛出错误
+    await expect(async () => {
+      await writeImageMetadataHandler(paramsWithTooManyTags, mockContext);
+    }).rejects.toThrow(JsonRpcError);
+
+    try {
+      await writeImageMetadataHandler(paramsWithTooManyTags, mockContext);
+    } catch (error) {
+      const jsonRpcError = error as JsonRpcError;
+      // 验证错误代码和消息
+      expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
+      expect(jsonRpcError.message).toContain('标签数量过多');
+      expect(jsonRpcError.data).toHaveProperty('tagsCount', 51);
+      expect(jsonRpcError.data).toHaveProperty('maxCount', 50);
+    }
+    
+    // 验证元数据服务没有被调用
+    expect(mockWriteMetadataForImage).not.toHaveBeenCalled();
+  });
+  
+  // 参数验证测试：人物数量限制
+  it('当人物数量超过限制时抛出JsonRpcError', async () => {
+    // 生成51个人物名称
+    const tooManyPeople = Array.from({ length: 51 }, (_, i) => `Person${i + 1}`);
+    
+    const paramsWithTooManyPeople = {
+      ...validParams,
+      metadata: {
+        ...validParams.metadata,
+        people: tooManyPeople
+      }
+    };
+
+    // 验证抛出错误
+    await expect(async () => {
+      await writeImageMetadataHandler(paramsWithTooManyPeople, mockContext);
+    }).rejects.toThrow(JsonRpcError);
+
+    try {
+      await writeImageMetadataHandler(paramsWithTooManyPeople, mockContext);
+    } catch (error) {
+      const jsonRpcError = error as JsonRpcError;
+      // 验证错误代码和消息
+      expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
+      expect(jsonRpcError.message).toContain('人物数量过多');
+      expect(jsonRpcError.data).toHaveProperty('peopleCount', 51);
+      expect(jsonRpcError.data).toHaveProperty('maxCount', 50);
+    }
+    
+    // 验证元数据服务没有被调用
+    expect(mockWriteMetadataForImage).not.toHaveBeenCalled();
+  });
+  
+  // 参数验证成功测试：验证所有有效参数能通过校验
+  it('合法的参数应该通过所有业务校验', async () => {
+    // 设置有效但接近边界的参数
+    const validTagsAtLimit = Array.from({ length: 50 }, (_, i) => `ValidTag${i + 1}`);
+    const validPeopleAtLimit = Array.from({ length: 50 }, (_, i) => `ValidPerson${i + 1}`);
+    const validLongDescription = 'D'.repeat(10000); // 正好10000字符
+    const validLongLocation = 'L'.repeat(1000); // 正好1000字符
+    const validLongTag = 'T'.repeat(100); // 正好100字符
+    const validLongPerson = 'P'.repeat(100); // 正好100字符
+    
+    const paramsAtValidLimits = {
+      filePath: '/absolute/path/to/test.jpg',
+      metadata: {
+        tags: [...validTagsAtLimit.slice(0, 49), validLongTag], // 包含一个边界长度标签
+        people: [...validPeopleAtLimit.slice(0, 49), validLongPerson], // 包含一个边界长度人物名称
+        description: validLongDescription,
+        location: validLongLocation
+      },
+      overwrite: true
+    };
+    
+    // 设置模拟成功
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+    
+    // 验证不会抛出错误
+    await expect(writeImageMetadataHandler(paramsAtValidLimits, mockContext)).resolves.not.toThrow();
+    
+    // 验证元数据服务被调用，参数正确传递
+    expect(mockWriteMetadataForImage).toHaveBeenCalledWith(
+      paramsAtValidLimits.filePath,
+      paramsAtValidLimits.metadata,
+      paramsAtValidLimits.overwrite
+    );
   });
 }); 
