@@ -1,5 +1,13 @@
 # MetaTag Genie
 
+[![npm version](https://badge.fury.io/js/metatag-genie.svg)](https://badge.fury.io/js/metatag-genie)
+![NPM Downloads](https://img.shields.io/npm/dw/metatag-genie)
+[![Node.js Version](https://img.shields.io/node/v/metatag-genie)](https://nodejs.org)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/terryso/metatag-genie/pulls)
+[![smithery badge](https://smithery.ai/badge/@terryso/metatag-genie)](https://smithery.ai/server/@terryso/metatag-genie)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-项目文档-blue)](https://deepwiki.com/terryso/metatag-genie)
+
 ## 简介
 
 MetaTag Genie 是一个 macOS Stdio MCP 服务，专为写入图片元数据以增强 Spotlight 搜索而设计。该服务可被 AI 代理或其他需要本地管理图片元数据的应用程序调用，通过标准输入输出（Stdio）与客户端通信，提供符合 MCP (Machine Comprehension Protocol) 规范的接口。
@@ -18,7 +26,6 @@ MetaTag Genie 是一个 macOS Stdio MCP 服务，专为写入图片元数据以�
 
 ## 系统要求
 
-- **macOS 版本**：macOS Sonoma 或 Ventura（最新的两个主要版本）
 - **Node.js 版本**：Node.js 22.x LTS 或更高版本
 - **隐含依赖**：本项目使用 `exiftool-vendored`，它会自动管理 ExifTool 的依赖
 
@@ -105,6 +112,29 @@ AI代理（如Cursor）或其他客户端需要在其配置中指定命令的完
 - 使用npx：`/usr/local/bin/npx metatag-genie`
 
 注意：本服务不监听网络端口，仅通过标准输入输出通信。
+
+### Cursor MCP集成
+
+在Cursor编辑器中，可以通过以下步骤集成MetaTag Genie：
+
+1. 在项目根目录创建`.cursor/mcp.json`文件
+2. 添加以下配置内容：
+
+```json
+{
+  "mcpServers": {
+    "MetaTagGenie": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "metatag-genie"
+      ]
+    }
+  }
+}
+```
+
+配置完成后，Cursor中的AI助手将能够使用MetaTag Genie提供的writeImageMetadata工具，直接为图片添加元数据，增强Spotlight搜索体验。
 
 ## MCP 交互协议
 
@@ -194,9 +224,9 @@ npm run format
 
 ### 分支策略
 
-- `main` 分支用于发布稳定版本
-- 开发新功能或修复 Bug 时，从 `main` 创建特性分支（例如 `feature/add-png-support` 或 `fix/handle-exiftool-error`）
-- 完成后提交 Pull Request (PR) 到 `main` 分支
+- `master` 分支用于发布稳定版本
+- 开发新功能或修复 Bug 时，从 `master` 创建特性分支（例如 `feature/add-png-support` 或 `fix/handle-exiftool-error`）
+- 完成后提交 Pull Request (PR) 到 `master` 分支
 
 ### Pull Request (PR) 流程
 
