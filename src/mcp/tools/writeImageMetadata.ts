@@ -5,7 +5,6 @@
  */
 
 import { 
-  ERROR_CODES, 
   JsonRpcError,
   FileNotFoundError,
   FileAccessError,
@@ -92,84 +91,81 @@ export async function writeImageMetadataHandler(
       message: successMessage,
     };
   } catch (error) {
-    // 如果已经是JsonRpcError类型，直接向上抛出
+    // 如果已经是JsonRpcError类型，获取其信息
     if (error instanceof JsonRpcError) {
-      throw error;
+      return {
+        success: false,
+        filePath: params.filePath,
+        message: error.message
+      };
     }
     
-    // 将捕获的错误映射到适当的JsonRpcError
+    // 将捕获的错误映射到合适的错误信息
     if (error instanceof FileNotFoundError) {
-      throw new JsonRpcError(
-        ERROR_CODES.FILE_NOT_FOUND, 
-        error.message, 
-        { filePath: error.filePath }
-      );
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `文件未找到: ${error.message}`
+      };
     }
     if (error instanceof FileAccessError) {
-      const code = error.operation === 'write' 
-        ? ERROR_CODES.FILE_NOT_WRITABLE 
-        : ERROR_CODES.FILE_NOT_READABLE;
-      throw new JsonRpcError(
-        code, 
-        error.message, 
-        { filePath: error.filePath, operation: error.operation }
-      );
+      const operation = error.operation === 'write' ? '写入' : '读取';
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `文件${operation}权限错误: ${error.message}`
+      };
     }
     if (error instanceof UnsupportedFileFormatError) {
-      throw new JsonRpcError(
-        ERROR_CODES.UNSUPPORTED_FILE_FORMAT, 
-        error.message, 
-        { filePath: error.filePath, format: error.format }
-      );
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `不支持的文件格式: ${error.format} - ${error.message}`
+      };
     }
     if (error instanceof RelativePathError) {
-      throw new JsonRpcError(
-        ERROR_CODES.RELATIVE_PATH_NOT_ALLOWED,
-        error.message,
-        { filePath: error.filePath }
-      );
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `不允许使用相对路径: ${error.message}`
+      };
     }
     if (error instanceof ExifToolTimeoutError) {
-      throw new JsonRpcError(
-        ERROR_CODES.EXIFTOOL_TIMEOUT, 
-        error.message, 
-        { 
-          filePath: error.filePath,
-          operation: error.operation,
-          timeoutMs: error.timeoutMs
-        }
-      );
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `ExifTool执行超时: ${error.message}`
+      };
     }
     if (error instanceof ExifToolProcessError) {
-      throw new JsonRpcError(
-        ERROR_CODES.EXIFTOOL_PROCESS_ERROR, 
-        error.message, 
-        { 
-          exitCode: error.exitCode,
-          stderr: error.stderr 
-        }
-      );
+      return {
+        success: false,
+        filePath: params.filePath,
+        message: `ExifTool处理错误: ${error.message}`
+      };
     }
     if (error instanceof MetadataWriteError) {
-      throw new JsonRpcError(
-        ERROR_CODES.METADATA_WRITE_FAILED, 
-        error.message, 
-        { filePath: error.filePath }
-      );
+      return {
+        success: false,
+        filePath: error.filePath,
+        message: `元数据写入失败: ${error.message}`
+      };
     }
     if (error instanceof InvalidMetadataFormatError) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        error.message
-      );
+      return {
+        success: false,
+        filePath: params.filePath,
+        message: `无效的元数据格式: ${error.message}`
+      };
     }
     
-    // 其他未知错误转换为通用内部错误
+    // 其他未知错误
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new JsonRpcError(
-      ERROR_CODES.JSON_RPC_INTERNAL_ERROR, 
-      `写入元数据时发生内部错误: ${errorMessage}`
-    );
+    return {
+      success: false,
+      filePath: params.filePath,
+      message: `写入元数据时发生内部错误: ${errorMessage}`
+    };
   }
 }
 
@@ -189,33 +185,24 @@ function validateMetadataParams(params: WriteImageMetadataParams): void {
   if (params.metadata?.tags) {
     // 检查标签数量是否过多
     if (params.metadata.tags.length > MAX_TAGS_COUNT) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `标签数量过多，最多允许${MAX_TAGS_COUNT}个标签`, 
-        { tagsCount: params.metadata.tags.length, maxCount: MAX_TAGS_COUNT }
+      throw new InvalidMetadataFormatError(
+        `标签数量过多，最多允许${MAX_TAGS_COUNT}个标签`
       );
     }
     
     // 检查每个标签
     const invalidTags = params.metadata.tags.filter(tag => tag.trim() === '');
     if (invalidTags.length > 0) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        '标签不能为空字符串', 
-        { invalidTags }
+      throw new InvalidMetadataFormatError(
+        '标签不能为空字符串'
       );
     }
     
     // 检查标签长度
     const longTags = params.metadata.tags.filter(tag => tag.length > MAX_TAG_LENGTH);
     if (longTags.length > 0) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `标签长度不能超过${MAX_TAG_LENGTH}个字符`, 
-        { 
-          longTags: longTags.map(tag => ({ tag, length: tag.length })),
-          maxLength: MAX_TAG_LENGTH 
-        }
+      throw new InvalidMetadataFormatError(
+        `标签长度不能超过${MAX_TAG_LENGTH}个字符`
       );
     }
   }
@@ -224,33 +211,24 @@ function validateMetadataParams(params: WriteImageMetadataParams): void {
   if (params.metadata?.people) {
     // 检查人物数量是否过多
     if (params.metadata.people.length > MAX_PEOPLE_COUNT) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `人物数量过多，最多允许${MAX_PEOPLE_COUNT}个人物`, 
-        { peopleCount: params.metadata.people.length, maxCount: MAX_PEOPLE_COUNT }
+      throw new InvalidMetadataFormatError(
+        `人物数量过多，最多允许${MAX_PEOPLE_COUNT}个人物`
       );
     }
     
     // 检查每个人物名称
     const invalidPeople = params.metadata.people.filter(person => person.trim() === '');
     if (invalidPeople.length > 0) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        '人物名称不能为空字符串', 
-        { invalidPeople }
+      throw new InvalidMetadataFormatError(
+        '人物名称不能为空字符串'
       );
     }
     
     // 检查人物名称长度
     const longNames = params.metadata.people.filter(person => person.length > MAX_PERSON_NAME_LENGTH);
     if (longNames.length > 0) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `人物名称长度不能超过${MAX_PERSON_NAME_LENGTH}个字符`, 
-        { 
-          longNames: longNames.map(name => ({ name, length: name.length })),
-          maxLength: MAX_PERSON_NAME_LENGTH 
-        }
+      throw new InvalidMetadataFormatError(
+        `人物名称长度不能超过${MAX_PERSON_NAME_LENGTH}个字符`
       );
     }
   }
@@ -258,13 +236,8 @@ function validateMetadataParams(params: WriteImageMetadataParams): void {
   // 检查描述长度是否过长
   if (params.metadata?.description) {
     if (params.metadata.description.length > MAX_DESCRIPTION_LENGTH) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `描述文本过长，最大允许${MAX_DESCRIPTION_LENGTH}个字符`, 
-        { 
-          descriptionLength: params.metadata.description.length,
-          maxLength: MAX_DESCRIPTION_LENGTH 
-        }
+      throw new InvalidMetadataFormatError(
+        `描述文本过长，最大允许${MAX_DESCRIPTION_LENGTH}个字符`
       );
     }
   }
@@ -272,13 +245,8 @@ function validateMetadataParams(params: WriteImageMetadataParams): void {
   // 检查地点文本长度是否过长
   if (params.metadata?.location) {
     if (params.metadata.location.length > MAX_LOCATION_LENGTH) {
-      throw new JsonRpcError(
-        ERROR_CODES.INVALID_METADATA_STRUCTURE, 
-        `地点文本过长，最大允许${MAX_LOCATION_LENGTH}个字符`, 
-        { 
-          locationLength: params.metadata.location.length,
-          maxLength: MAX_LOCATION_LENGTH 
-        }
+      throw new InvalidMetadataFormatError(
+        `地点文本过长，最大允许${MAX_LOCATION_LENGTH}个字符`
       );
     }
   }
