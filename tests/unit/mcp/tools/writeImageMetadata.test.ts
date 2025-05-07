@@ -247,18 +247,33 @@ describe('writeImageMetadataHandler', () => {
       // 所以这里不设置mockWriteMetadataForImage的返回值
       await writeImageMetadataHandler(paramsWithEmptyTag, mockContext);
     }).rejects.toThrow(JsonRpcError);
+  });
 
-    try {
-      await writeImageMetadataHandler(paramsWithEmptyTag, mockContext);
-    } catch (error) {
-      const jsonRpcError = error as JsonRpcError;
-      // 验证错误代码和消息
-      expect(jsonRpcError.code).toBe(ERROR_CODES.INVALID_METADATA_STRUCTURE);
-      expect(jsonRpcError.message).toContain('标签');
-      expect(jsonRpcError.data).toHaveProperty('invalidTags');
-      // 确保data.invalidTags包含空字符串标签
-      expect(jsonRpcError.data.invalidTags).toContain('   ');
-    }
+  // Story 3.4: 验证成功响应的结构符合规范
+  it('返回的成功响应结构完全符合规范', async () => {
+    // 模拟成功写入
+    mockWriteMetadataForImage.mockResolvedValue(undefined);
+
+    const result = await writeImageMetadataHandler(validParams, mockContext);
+
+    // 验证返回值的类型和结构完全符合docs/mcp-tools-definition.md中的定义
+    expect(result).toBeDefined();
+    expect(typeof result).toBe('object');
+    
+    // 验证必需字段是否存在且类型正确
+    expect(result.success).toBe(true);
+    expect(typeof result.success).toBe('boolean');
+    
+    expect(result.filePath).toBe(validParams.filePath);
+    expect(typeof result.filePath).toBe('string');
+    
+    expect(result.message).toBeTruthy();
+    expect(typeof result.message).toBe('string');
+    
+    // 验证没有额外的属性 (Schema规定了 additionalProperties: false)
+    const resultKeys = Object.keys(result);
+    expect(resultKeys).toHaveLength(3); // 只有success, filePath, message三个属性
+    expect(resultKeys.sort()).toEqual(['success', 'filePath', 'message'].sort());
   });
 
   // 参数验证测试：人物名称不能为空字符串

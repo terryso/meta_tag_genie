@@ -67,12 +67,12 @@ const startServiceProcess = (): ChildProcess => {
     detached: false
   });
   
-  childProcess.stderr?.on('data', (data) => {
-    // console.log(`[服务stderr] ${data.toString().trim()}`);
+  childProcess.stderr?.on('data', (_data) => {
+    // console.log(`[服务stderr] ${_data.toString().trim()}`);
   });
   
-  childProcess.stdout?.on('data', (data) => {
-    // console.log(`[服务stdout] ${data.toString().trim()}`);
+  childProcess.stdout?.on('data', (_data) => {
+    // console.log(`[服务stdout] ${_data.toString().trim()}`);
   });
   
   return childProcess;

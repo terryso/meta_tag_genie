@@ -85,7 +85,7 @@ describe('MCP Service Integration Tests', () => {
       const requestId = `write-test-${Date.now()}`;
       
       // 模拟客户端请求 - 包含所有MVP元数据类型
-      const writeMetadataRequest = {
+      const _writeMetadataRequest = {
         jsonrpc: '2.0',
         id: requestId,
         method: 'tool',
@@ -115,13 +115,25 @@ describe('MCP Service Integration Tests', () => {
         },
       };
       
-      console.log('模拟执行写入所有元数据类型请求:', writeMetadataRequest);
+      console.log('模拟执行写入所有元数据类型请求:', _writeMetadataRequest);
       
       // 验证响应格式
       expect(simulatedWriteResponse.jsonrpc).toBe('2.0');
       expect(simulatedWriteResponse.id).toBe(requestId);
+      expect(simulatedWriteResponse.result).toBeDefined();
+      
+      // Story 3.4: 验证成功响应中的result对象结构完全符合规范
       expect(simulatedWriteResponse.result.success).toBe(true);
+      expect(typeof simulatedWriteResponse.result.success).toBe('boolean');
       expect(simulatedWriteResponse.result.filePath).toBe(targetFile);
+      expect(typeof simulatedWriteResponse.result.filePath).toBe('string');
+      expect(simulatedWriteResponse.result.message).toBeTruthy();
+      expect(typeof simulatedWriteResponse.result.message).toBe('string');
+      
+      // 确认result对象没有额外属性 (Schema中规定additionalProperties: false)
+      const resultKeys = Object.keys(simulatedWriteResponse.result);
+      expect(resultKeys).toHaveLength(3); // 只有success, filePath, message三个属性
+      expect(resultKeys.sort()).toEqual(['success', 'filePath', 'message'].sort());
       
       // 模拟直接使用ExifTool验证写入的元数据
       // 注意：这不是真正的集成测试，我们只是模拟了执行工具和验证结果的过程
@@ -183,7 +195,7 @@ describe('MCP Service Integration Tests', () => {
       const requestId = `write-heic-test-${Date.now()}`;
       
       // 模拟客户端请求 - 包含所有MVP元数据类型
-      const writeMetadataRequest = {
+      const _writeMetadataRequest = {
         jsonrpc: '2.0',
         id: requestId,
         method: 'tool',
@@ -213,13 +225,25 @@ describe('MCP Service Integration Tests', () => {
         },
       };
       
-      // console.log('模拟执行HEIC写入所有元数据类型请求:', writeMetadataRequest);
+      // console.log('模拟执行HEIC写入所有元数据类型请求:', _writeMetadataRequest);
       
       // 验证响应格式
       expect(simulatedWriteResponse.jsonrpc).toBe('2.0');
       expect(simulatedWriteResponse.id).toBe(requestId);
+      expect(simulatedWriteResponse.result).toBeDefined();
+      
+      // Story 3.4: 验证成功响应中的result对象结构完全符合规范
       expect(simulatedWriteResponse.result.success).toBe(true);
+      expect(typeof simulatedWriteResponse.result.success).toBe('boolean');
       expect(simulatedWriteResponse.result.filePath).toBe(targetFile);
+      expect(typeof simulatedWriteResponse.result.filePath).toBe('string');
+      expect(simulatedWriteResponse.result.message).toBeTruthy();
+      expect(typeof simulatedWriteResponse.result.message).toBe('string');
+      
+      // 确认result对象没有额外属性 (Schema中规定additionalProperties: false)
+      const resultKeys = Object.keys(simulatedWriteResponse.result);
+      expect(resultKeys).toHaveLength(3); // 只有success, filePath, message三个属性
+      expect(resultKeys.sort()).toEqual(['success', 'filePath', 'message'].sort());
       
       // 模拟直接使用ExifTool验证写入的元数据
       // 注意：这不是真正的集成测试，我们只是模拟了执行工具和验证结果的过程
