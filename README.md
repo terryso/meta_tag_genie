@@ -4,7 +4,7 @@
 ![NPM Downloads](https://img.shields.io/npm/dw/metatag-genie)
 [![Node.js Version](https://img.shields.io/node/v/metatag-genie)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/terryso/metatag-genie/pulls)
-[![smithery badge](https://smithery.ai/badge/@terryso/metatag-genie)](https://smithery.ai/server/@terryso/metatag-genie)
+[![smithery badge](https://smithery.ai/badge/@terryso/meta_tag_genie)](https://smithery.ai/server/@terryso/meta_tag_genie)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-项目文档-blue)](https://deepwiki.com/terryso/metatag-genie)
 
