@@ -1,6 +1,6 @@
 {
   "name": "metatag-genie",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "一个基于 Node.js 和 TypeScript 的 MCP 服务，用于读写图片元数据",
   "main": "dist/main.js",
   "bin": {
@@ -12,11 +12,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/username/metatag-genie.git"
+    "url": "git+https://github.com/terryso/metatag-genie.git"
   },
-  "homepage": "https://github.com/username/metatag-genie#readme",
+  "homepage": "https://github.com/terryso/metatag-genie#readme",
   "bugs": {
-    "url": "https://github.com/username/metatag-genie/issues"
+    "url": "https://github.com/terryso/metatag-genie/issues"
   },
   "publishConfig": {
     "access": "public"
