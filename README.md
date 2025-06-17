@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/terryso-meta-tag-genie-badge.png)](https://mseep.ai/app/terryso-meta-tag-genie)
+
 # MetaTag Genie
 
 [![npm version](https://badge.fury.io/js/metatag-genie.svg)](https://badge.fury.io/js/metatag-genie)
